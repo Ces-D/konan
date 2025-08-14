@@ -1,0 +1,16 @@
+[workspace]
+resolver = "2"
+members = ["cli", "rongta"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+
+[workspace.dependencies]
+anyhow = "1.0.98"
+clap = { version = "4.5.43", features = ["cargo"] }
+env_logger = "0.11.8"
+log = "0.4.27"
+ascii = "1.1.0"
+escpos = "0.16.0"
+rongta = { path = "./rongta" }

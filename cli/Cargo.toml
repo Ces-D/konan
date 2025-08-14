@@ -1,0 +1,11 @@
+[package]
+name = "konan"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+clap.workspace = true
+env_logger.workspace = true
+log.workspace = true
+rongta.workspace = true

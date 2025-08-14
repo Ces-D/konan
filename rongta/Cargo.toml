@@ -1,0 +1,10 @@
+[package]
+name = "rongta"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+log.workspace = true
+ascii.workspace = true
+escpos.workspace = true
