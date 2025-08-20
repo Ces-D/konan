@@ -1,10 +1,13 @@
 [workspace]
 resolver = "2"
-members = ["cli", "rongta"]
+members = ["cli", "rongta", "konan_mobile"]
+default-members = ["cli"]
 
 [workspace.package]
 version = "0.1.0"
 edition = "2024"
+authors = ["Cesar <58753718+Ces-D@users.noreply.github.com>"]
+
 
 [workspace.dependencies]
 anyhow = "1.0.98"
@@ -13,4 +16,19 @@ env_logger = "0.11.8"
 log = "0.4.27"
 ascii = "1.1.0"
 escpos = "0.16.0"
+dioxus = { version = "0.6.3", features = ["router", "fullstack"] }
+strum = { version = "0.27", features = ["derive"] }
+
 rongta = { path = "./rongta" }
+
+[profile]
+
+[profile.wasm-dev]
+inherits = "dev"
+opt-level = 1
+
+[profile.server-dev]
+inherits = "dev"
+
+[profile.android-dev]
+inherits = "dev"

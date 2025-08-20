@@ -1,9 +1,11 @@
 use anyhow::{Result, anyhow, ensure};
 use ascii::AsciiString;
-use escpos::driver::NetworkDriver;
-use escpos::printer::Printer;
-use escpos::printer_options::PrinterOptions;
-use escpos::utils::{DebugMode, JustifyMode, Protocol, UnderlineMode};
+use escpos::{
+    driver::NetworkDriver,
+    printer::Printer,
+    printer_options::PrinterOptions,
+    utils::{DebugMode, JustifyMode, Protocol, UnderlineMode},
+};
 
 const CPL: u8 = 48; // characters per line
 const IP: &str = "192.168.1.87";

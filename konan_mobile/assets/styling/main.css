@@ -1,0 +1,92 @@
+:root {
+    --text-color: #1b1a1c;
+    --text-color-inverted: #eeedf9;
+    --bg-color: #eeedf9;
+    /* half the hsl lightness */
+    --bg-color-50: #473db8;
+    --bg-color-inverted: #1b1a1c;
+    /* double the hsl lightness */
+    --bg-color-inverted-50: #38363a;
+
+    --color-primary-900: #a5371b;
+
+    --text-sm: clamp(0.875rem, 0.84rem + 0.2vw, 1rem); /* ~14px to 16px */
+    --text-md: clamp(1rem, 0.95rem + 0.25vw, 1.125rem); /* ~16px to 18px */
+    --text-lg: clamp(1.125rem, 1.05rem + 0.3vw, 1.25rem); /* ~18px to 20px */
+    --text-xl: clamp(1.25rem, 1.15rem + 0.4vw, 1.5rem); /* ~20px to 24px */
+    --text-2xl: clamp(1.5rem, 1.35rem + 0.6vw, 2rem); /* ~24px to 32px */
+}
+
+html[data-theme="dark"] {
+    --text-color: #eeedf9;
+    --text-color-inverted: #1b1a1c;
+    --bg-color: #1b1a1c;
+    --bg-color-50: #38363a;
+    --bg-color-inverted: #eeedf9;
+    --bg-color-inverted-50: #473db8;
+}
+
+html[data-theme="orange"] {
+    --text-color: #581c0e;
+    --text-color-inverted: #f8dad3;
+    --bg-color: #fef8f6;
+    --bg-color-50: #e14b19;
+    --bg-color-inverted: #40251c;
+    --bg-color-inverted-50: #a35e48;
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-family: "Lato", sans-serif;
+}
+
+button,
+code,
+input,
+textarea,
+p {
+    font-size: var(--text-md);
+    font-weight: var(--font-weight-normal);
+}
+h1 {
+    font-size: var(--text-2xl);
+    font-weight: var(--font-weight-bold);
+}
+h2 {
+    font-size: var(--text-2xl);
+    font-weight: var(--font-weight-normal);
+}
+h3 {
+    font-size: var(--text-xl);
+    font-weight: var(--font-weight-normal);
+}
+h4 {
+    font-size: var(--text-lg);
+    font-weight: var(--font-weight-bold);
+}
+h5 {
+    font-size: var(--text-lg);
+    font-weight: var(--font-weight-thin);
+}
+
+div,
+input,
+textarea,
+button,
+p,
+h1,
+h2,
+h3,
+h4,
+h5 {
+    font-family: "Lato", sans-serif;
+    color: var(--text-color);
+}
+
+* {
+    transition:
+        color 0.3s linear,
+        background-color 0.3s linear;
+    outline: var(--color-primary-900);
+}

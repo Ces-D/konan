@@ -1,6 +1,7 @@
-use std::fs;
-use std::io;
-use std::path::{Path, PathBuf};
+use std::{
+    fs, io,
+    path::{Path, PathBuf},
+};
 
 /// Reads a file from a given path, whether it's relative or absolute.
 /// Returns the file contents as a `String`.

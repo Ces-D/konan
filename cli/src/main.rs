@@ -1,13 +1,12 @@
 mod tools;
 
-use std::str::FromStr;
-
 use clap::{
     Arg, ArgAction, Command,
     builder::{NonEmptyStringValueParser, PossibleValuesParser},
     crate_authors, crate_description, crate_name, crate_version, value_parser,
 };
 use rongta::{Template, TemplateVariation};
+use std::str::FromStr;
 use strum::VariantNames;
 
 fn main() {

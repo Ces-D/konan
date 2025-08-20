@@ -1,0 +1,12 @@
+#layout-nav {
+    border-bottom: 1px solid var(--color-primary-900);
+}
+
+#layout-main {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    grid-template-rows: repeat(auto, 1fr);
+    gap: 1rem;
+    margin: 5px;
+    min-height: 75vh;
+}
