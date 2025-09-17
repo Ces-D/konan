@@ -4,7 +4,7 @@ members = ["cli", "rongta", "konan_mobile"]
 default-members = ["cli"]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 authors = ["Cesar <58753718+Ces-D@users.noreply.github.com>"]
 

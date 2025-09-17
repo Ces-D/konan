@@ -1,24 +1,20 @@
 use std::{
-    fs, io,
-    path::{Path, PathBuf},
+    fs::File,
+    io::{self, BufRead, BufReader},
+    path::Path,
 };
 
-/// Reads a file from a given path, whether it's relative or absolute.
-/// Returns the file contents as a `String`.
-pub fn read_file<P: AsRef<Path>>(path: P) -> io::Result<String> {
-    // Convert to a PathBuf
+/// Reads a file line by line from a given path using an iterator.
+/// This is memory-efficient as it doesn't load the whole file into memory.
+/// Returns an iterator over the lines of the file.
+pub fn read_file_lines<P: AsRef<Path>>(path: P) -> io::Result<io::Lines<BufReader<File>>> {
     let input_path = path.as_ref();
-
-    // Resolve to an absolute path
-    let abs_path: PathBuf = if input_path.is_absolute() {
+    let abs_path = if input_path.is_absolute() {
         input_path.to_path_buf()
     } else {
         std::env::current_dir()?.join(input_path)
     };
 
-    // Optional: Canonicalize to remove `..` and `.` segments
-    let abs_path = abs_path.canonicalize()?;
-
-    // Read the file contents
-    fs::read_to_string(abs_path)
+    let file = File::open(abs_path)?;
+    Ok(BufReader::new(file).lines())
 }

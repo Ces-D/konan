@@ -1,13 +1,10 @@
 mod tools;
 
 use clap::{
-    Arg, ArgAction, Command,
-    builder::{NonEmptyStringValueParser, PossibleValuesParser},
-    crate_authors, crate_description, crate_name, crate_version, value_parser,
+    Arg, ArgAction, Command, builder::NonEmptyStringValueParser, crate_authors, crate_description,
+    crate_name, crate_version,
 };
-use rongta::{Template, TemplateVariation};
-use std::str::FromStr;
-use strum::VariantNames;
+use rongta::{PrintBuilder, TextSize, establish_rongta_printer};
 
 fn main() {
     let cli = Command::new(crate_name!())
@@ -22,13 +19,6 @@ fn main() {
                 .value_parser(NonEmptyStringValueParser::new()),
         )
         .arg(
-            Arg::new("link")
-                .long("link")
-                .short('l')
-                .action(ArgAction::SetTrue)
-                .help("A flag identifying the content as a link"),
-        )
-        .arg(
             Arg::new("file")
                 .long("file")
                 .short('f')
@@ -36,63 +26,84 @@ fn main() {
                 .help("A flag identifying the content as a file path"),
         )
         .arg(
-            Arg::new("min_lines")
-                .long("min_lines")
-                .short('m')
-                .action(ArgAction::Set)
-                .default_value("0")
-                .value_parser(value_parser!(u8))
-                .help("Set the min number of lines to print"),
+            Arg::new("no-cut")
+                .long("no-cut")
+                .short('n')
+                .action(ArgAction::SetTrue)
+                .help("A flag identifying that the printer should not cut after printing"),
         )
         .arg(
-            Arg::new("template")
-                .long("template")
+            Arg::new("bold")
+                .long("bold")
+                .short('b')
+                .action(ArgAction::SetTrue)
+                .help("A flag identifying this content as BOLD"),
+        )
+        .arg(
+            Arg::new("underline")
+                .long("underline")
+                .short('u')
+                .action(ArgAction::SetTrue)
+                .help("A flag identifying this content as UNDERLINED"),
+        )
+        .arg(
+            Arg::new("text")
+                .long("text")
                 .short('t')
                 .action(ArgAction::Set)
-                .default_value(TemplateVariation::Raw.as_ref())
-                .value_parser(PossibleValuesParser::new(TemplateVariation::VARIANTS))
-                .help("Templates add styles to the print"),
+                .value_parser(["normal", "large", "x-large"])
+                .default_value("normal")
+                .help("The text size for this content"),
         );
+
     let args = cli.get_matches();
     let content: Vec<String> = args
         .get_many("content")
         .ok_or_else(|| {
             vec!["Nothing to print. Future version will be return a joke from chatjippity for empty content".to_string()]
         }).unwrap().cloned().collect();
-    let is_link = args.get_flag("link");
     let is_file = args.get_flag("file");
-    let template_variation = args
-        .get_one::<String>("template")
-        .map(|v| TemplateVariation::from_str(v.as_str()).unwrap())
-        .unwrap_or_default()
-        .clone();
-    let min_lines = args.get_one::<u8>("min_lines").cloned().unwrap_or_default();
+    let cut = !args.get_flag("no-cut");
+    let format_bold = args.get_flag("bold");
+    let format_underline = args.get_flag("underline");
+    let text_size = match args.get_one::<String>("text").map(|s| s.as_str()) {
+        Some("normal") => TextSize::Medium,
+        Some("large") => TextSize::Large,
+        Some("x-large") => TextSize::ExtraLarge,
+        _ => TextSize::Medium,
+    };
 
-    if is_link {
-        todo!()
-    } else if is_file {
-        let file_path = content.first().unwrap();
-        let content = tools::file::read_file(file_path).expect("Failed to open file");
-        print(Template {
-            content: vec![content],
-            min_lines,
-            variation: template_variation,
-        })
+    let mut print_builder = PrintBuilder::new();
+    print_builder.cut = cut;
+
+    if is_file {
+        println!("Ignoring `bold`, `underline`, and `text_size` flags");
+        let file_path = content.first().expect("Failed to interpret the file path");
+        let file = tools::file::read_file_lines(file_path).expect("Failed to read file lines");
+        for line in file {
+            if let Ok(c) = line {
+                print_builder
+                    .add_content(&c, text_size, false, false)
+                    .expect("Failed to add file content");
+            }
+        }
+        print(print_builder)
     } else {
-        print(Template {
-            content,
-            min_lines,
-            variation: template_variation,
-        })
+        for c in content.iter() {
+            print_builder
+                .add_content(&c, text_size, format_bold, format_underline)
+                .expect("Failed to add content");
+        }
+        print(print_builder)
     }
 }
 
-fn print(content: Template) {
-    match rongta::establish_rongta_printer() {
-        Ok(printer) => match rongta::print(content, printer) {
-            Ok(_) => println!("Succesfully printed"),
-            Err(e) => eprintln!("{}", e),
+fn print(builder: PrintBuilder) {
+    match establish_rongta_printer() {
+        Ok(printer) => match builder.print(printer) {
+            Ok(_) => println!("Succesfully printed!"),
+            Err(_) => eprintln!("Failed to print!"),
         },
-        Err(e) => println!("{}", e),
-    };
+        Err(_) => eprintln!("Unable to connect to rongta printer"),
+    }
 }

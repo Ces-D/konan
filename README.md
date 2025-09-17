@@ -38,4 +38,4 @@ The system is composed of two main parts:
 
 ## Development Status
 
-The project is currently in the initial setup phase. The architecture has been defined, and the next step is to implement the cloud backend and the local print agent.
+The project has currently gone a different direction. The printer is connected via network and the application cli is operational. Future plans are in development.
