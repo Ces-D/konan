@@ -8,6 +8,7 @@ use escpos::{
     printer_options::PrinterOptions,
     utils::{DebugMode, Protocol, UnderlineMode},
 };
+use log::error;
 
 const CPL: u8 = 48; // characters per line
 const IP: &str = "192.168.1.87";
@@ -75,6 +76,7 @@ impl PrintBuilder {
                 is_underlined,
             });
         }
+        self.content.push(line);
         Ok(())
     }
 
@@ -98,7 +100,9 @@ impl PrintBuilder {
             printer.feed()?;
         }
         if self.cut {
-            printer.cut()?;
+            printer.print_cut()?;
+        } else {
+            printer.print()?;
         }
         Ok(())
     }
@@ -116,7 +120,7 @@ pub fn establish_rongta_printer() -> Result<Printer<NetworkDriver>> {
     let driver = match NetworkDriver::open(IP, PORT, None) {
         Ok(driver) => Ok(driver),
         Err(e) => {
-            eprintln!("{}", e);
+            error!("Error opening network driver: {:?}", e);
             Err(anyhow!("Failed to open {}:{}", IP, PORT))
         }
     }?;

@@ -1,3 +1,4 @@
+use log::trace;
 use std::{
     fs::File,
     io::{self, BufRead, BufReader},
@@ -8,6 +9,7 @@ use std::{
 /// This is memory-efficient as it doesn't load the whole file into memory.
 /// Returns an iterator over the lines of the file.
 pub fn read_file_lines<P: AsRef<Path>>(path: P) -> io::Result<io::Lines<BufReader<File>>> {
+    trace!("Reading file lines");
     let input_path = path.as_ref();
     let abs_path = if input_path.is_absolute() {
         input_path.to_path_buf()

@@ -4,9 +4,12 @@ use clap::{
     Arg, ArgAction, Command, builder::NonEmptyStringValueParser, crate_authors, crate_description,
     crate_name, crate_version,
 };
+use log::{error, info};
 use rongta::{PrintBuilder, TextSize, establish_rongta_printer};
 
 fn main() {
+    env_logger::builder().init();
+
     let cli = Command::new(crate_name!())
         .about(crate_description!())
         .version(crate_version!())
@@ -77,7 +80,7 @@ fn main() {
     print_builder.cut = cut;
 
     if is_file {
-        println!("Ignoring `bold`, `underline`, and `text_size` flags");
+        info!("Ignoring `bold`, `underline`, and `text_size` flags");
         let file_path = content.first().expect("Failed to interpret the file path");
         let file = tools::file::read_file_lines(file_path).expect("Failed to read file lines");
         for line in file {
@@ -101,9 +104,9 @@ fn main() {
 fn print(builder: PrintBuilder) {
     match establish_rongta_printer() {
         Ok(printer) => match builder.print(printer) {
-            Ok(_) => println!("Succesfully printed!"),
-            Err(_) => eprintln!("Failed to print!"),
+            Ok(_) => info!("Succesfully printed!"),
+            Err(_) => error!("Failed to print!"),
         },
-        Err(_) => eprintln!("Unable to connect to rongta printer"),
+        Err(_) => error!("Unable to connect to rongta printer"),
     }
 }
