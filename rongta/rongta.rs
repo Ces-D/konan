@@ -1,6 +1,4 @@
-use std::str::FromStr;
-
-use anyhow::{Result, anyhow, bail};
+use anyhow::{anyhow, bail, Result};
 use ascii::AsciiString;
 use escpos::{
     driver::NetworkDriver,
@@ -9,6 +7,7 @@ use escpos::{
     utils::{DebugMode, Protocol, UnderlineMode},
 };
 use log::error;
+use std::str::FromStr;
 
 const CPL: u8 = 48; // characters per line
 const IP: &str = "192.168.1.87";
@@ -64,7 +63,7 @@ impl PrintBuilder {
         is_underlined: bool,
     ) -> Result<()> {
         let mut line = Line::default();
-        for word in content.trim_ascii().split_ascii_whitespace() {
+        for word in content.split_ascii_whitespace() {
             if line.full_len() + word.len() > CPL as usize {
                 self.content.push(line);
                 line = Line::default();
@@ -80,6 +79,7 @@ impl PrintBuilder {
         Ok(())
     }
 
+    // Prints added content in a formatted way.
     pub fn print(&self, mut printer: Printer<NetworkDriver>) -> Result<()> {
         for line in self.content.iter() {
             for word in line.words.iter() {
@@ -106,12 +106,22 @@ impl PrintBuilder {
         }
         Ok(())
     }
+
+    /// Prints content as is.
+    pub fn print_historic(content: &str, mut printer: Printer<NetworkDriver>) -> Result<()> {
+        printer.writeln(content)?.print_cut()?;
+        Ok(())
+    }
 }
 
 fn ascii_only(s: &str) -> Result<String> {
     match AsciiString::from_str(s) {
         Ok(s) => Ok(s.into()),
-        Err(e) => bail!("Non-ASCII characters detected: {}", e.valid_up_to()),
+        Err(e) => bail!(
+            "Non-ASCII characters detected in '{}': {}",
+            s,
+            s.chars().nth(e.valid_up_to()).unwrap()
+        ),
     }
 }
 

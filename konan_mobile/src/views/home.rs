@@ -1,11 +1,10 @@
+use anyhow::Result;
+use dioxus::prelude::*;
 use std::{
     collections::HashMap,
     fmt::Display,
     time::{SystemTime, UNIX_EPOCH},
 };
-
-use anyhow::Result;
-use dioxus::prelude::*;
 
 const HOME_CSS: Asset = asset!("/assets/styling/home.css");
 
