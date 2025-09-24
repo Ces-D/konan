@@ -121,7 +121,7 @@ fn print(builder: PrintBuilder) {
             Ok(_) => info!("Succesfully printed!"),
             Err(_) => error!("Failed to print!"),
         },
-        Err(_) => error!("Unable to connect to rongta printer"),
+        Err(e) => error!("Unable to connect to rongta printer: {}", e),
     }
 }
 
@@ -131,6 +131,6 @@ fn print_historic(content: &str) {
             Ok(_) => info!("Succesfully printed!"),
             Err(_) => error!("Failed to print!"),
         },
-        Err(_) => error!("Unable to connect to rongta printer"),
+        Err(e) => error!("Unable to connect to rongta printer: {}", e),
     }
 }

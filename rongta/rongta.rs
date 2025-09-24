@@ -64,7 +64,7 @@ impl PrintBuilder {
     ) -> Result<()> {
         let mut line = Line::default();
         for word in content.split_ascii_whitespace() {
-            if line.full_len() + word.len() > CPL as usize {
+            if line.full_len() + word.len() + 1 > CPL as usize {
                 self.content.push(line);
                 line = Line::default();
             }

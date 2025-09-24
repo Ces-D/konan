@@ -2539,7 +2539,7 @@ dependencies = [
 
 [[package]]
 name = "konan"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -2551,7 +2551,7 @@ dependencies = [
 
 [[package]]
 name = "konan_mobile"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "anyhow",
  "dioxus",
@@ -3752,7 +3752,7 @@ dependencies = [
 
 [[package]]
 name = "rongta"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "anyhow",
  "ascii",
