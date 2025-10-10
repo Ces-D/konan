@@ -1,4 +1,4 @@
-use anyhow::{anyhow, bail, Result};
+use anyhow::{Result, anyhow, bail};
 use ascii::AsciiString;
 use escpos::{
     driver::NetworkDriver,
@@ -6,7 +6,7 @@ use escpos::{
     printer_options::PrinterOptions,
     utils::{DebugMode, Protocol, UnderlineMode},
 };
-use log::error;
+use log::{error, info};
 use std::str::FromStr;
 
 const CPL: u8 = 48; // characters per line
@@ -36,11 +36,16 @@ struct Line {
 
 impl Line {
     pub fn push(&mut self, word: Word) {
+        info!("Pushing {} to line", word.content);
         self.character_len += word.content.len();
         self.words.push(word);
     }
     pub fn full_len(&self) -> usize {
-        self.character_len + (self.words.len() - 1) // for space between words
+        if self.words.len() == 0 {
+            0
+        } else {
+            self.character_len + (self.words.len() - 1) // for space between words
+        }
     }
 }
 
@@ -64,7 +69,8 @@ impl PrintBuilder {
     ) -> Result<()> {
         let mut line = Line::default();
         for word in content.split_ascii_whitespace() {
-            if line.full_len() + word.len() + 1 > CPL as usize {
+            info!("Attempting to add word: {}", word);
+            if line.full_len() + word.len() + 1 >= CPL as usize {
                 self.content.push(line);
                 line = Line::default();
             }

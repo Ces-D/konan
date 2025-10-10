@@ -1,11 +1,11 @@
 mod tools;
 
 use clap::{
-    builder::NonEmptyStringValueParser, crate_authors, crate_description, crate_name,
-    crate_version, Arg, ArgAction, Command,
+    Arg, ArgAction, Command, builder::NonEmptyStringValueParser, crate_authors, crate_description,
+    crate_name, crate_version,
 };
 use log::{error, info};
-use rongta::{establish_rongta_printer, PrintBuilder, TextSize};
+use rongta::{PrintBuilder, TextSize, establish_rongta_printer};
 
 fn main() {
     env_logger::builder().init();
@@ -31,7 +31,7 @@ fn main() {
         .arg(
             Arg::new("historic")
                 .long("historic")
-                .short('h')
+                .short('i')
                 .action(ArgAction::SetTrue)
                 .help("A flag for historic file printing. Only used when file flag used."),
         )
