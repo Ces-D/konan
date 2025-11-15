@@ -13,25 +13,26 @@ The primary output format is ASCII text, ensuring compatibility and simplicity. 
 The system is composed of two main parts:
 
 1.  **Cloud Backend (AWS Serverless)**:
-    *   **API Gateway**: Provides an HTTP endpoint (`/messages`) to receive requests.
-    *   **AWS Lambda**: The core processing engine. It handles incoming requests, interacts with AI services for content enhancement, and enqueues print jobs.
-    *   **Amazon SQS (FIFO)**: A First-In, First-Out queue to manage print jobs, ensuring they are processed in the correct order.
-    *   **Amazon S3**: Used for handling file uploads via presigned URLs (for larger assets, not used in the MVP for small, inline media).
+
+    - **API Gateway**: Provides an HTTP endpoint (`/messages`) to receive requests.
+    - **AWS Lambda**: The core processing engine. It handles incoming requests, interacts with AI services for content enhancement, and enqueues print jobs.
+    - **Amazon SQS (FIFO)**: A First-In, First-Out queue to manage print jobs, ensuring they are processed in the correct order.
+    - **Amazon S3**: Used for handling file uploads via presigned URLs (for larger assets, not used in the MVP for small, inline media).
 
 2.  **Local Agent**:
-    *   A lightweight application running on the same local network as the printer.
-    *   **Responsibilities**:
-        *   Polls the SQS queue for new print jobs.
-        *   Sends the job payload (ASCII text) directly to the Rongta printer via a raw TCP connection (`<printer-ip>:9100`).
-        *   Handles printer-specific commands like cutting the paper.
-    *   **Technology**: Intended to be implemented in Node.js/TypeScript.
+    - A lightweight application running on the same local network as the printer.
+    - **Responsibilities**:
+      - Polls the SQS queue for new print jobs.
+      - Sends the job payload (ASCII text) directly to the Rongta printer via a raw TCP connection (`<printer-ip>:9100`).
+      - Handles printer-specific commands like cutting the paper.
+    - **Technology**: Intended to be implemented in Node.js/TypeScript.
 
 ## Features
 
 - **Multiple Input Modes**: Clients can specify how a message is handled:
-    - `echo`: Print the text as-is.
-    - `enhance`: Use an AI service to summarize or reformat the content.
-    - `auto`: Let the backend decide the best mode.
+  - `echo`: Print the text as-is.
+  - `enhance`: Use an AI service to summarize or reformat the content.
+  - `auto`: Let the backend decide the best mode.
 - **Media-to-ASCII**: Photos, videos, and audio are converted into text-based representations for printing.
 - **Strict Print Ordering**: A single SQS FIFO queue ensures that jobs are printed in the order they are received.
 - **Local Printing**: The local agent bridges the gap between the cloud and the LAN-connected printer.

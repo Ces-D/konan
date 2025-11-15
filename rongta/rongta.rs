@@ -13,6 +13,8 @@ const CPL: u8 = 48; // characters per line
 const IP: &str = "192.168.1.87";
 const PORT: u16 = 9100;
 
+// TODO: create the markdown reader, thats needs a redesign of the PrintBuilder
+
 #[derive(Default, Clone, Copy)]
 pub enum TextSize {
     #[default]

@@ -1,0 +1,14 @@
+[package]
+name = "ai"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+
+[lib]
+path = "ai.rs"
+
+[dependencies]
+anyhow.workspace = true
+log.workspace = true
+serde.workspace = true
+async-openai.workspace = true
