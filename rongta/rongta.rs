@@ -9,11 +9,9 @@ use escpos::{
 use log::{error, info};
 use std::str::FromStr;
 
-const CPL: u8 = 48; // characters per line
+const CPL: u8 = 49; // characters per line
 const IP: &str = "192.168.1.87";
 const PORT: u16 = 9100;
-
-// TODO: create the markdown reader, thats needs a redesign of the PrintBuilder
 
 #[derive(Default, Clone, Copy)]
 pub enum TextSize {
@@ -87,10 +85,29 @@ impl PrintBuilder {
         Ok(())
     }
 
+    pub fn add_content_no_check(
+        &mut self,
+        content: &str,
+        text_size: TextSize,
+        is_bold: bool,
+        is_underlined: bool,
+    ) -> Result<()> {
+        let mut line = Line::default();
+        info!("Attempting to add content: {}", content);
+        line.push(Word {
+            content: ascii_only(content)?,
+            text_size,
+            is_bold,
+            is_underlined,
+        });
+        self.content.push(line);
+        Ok(())
+    }
+
     // Prints added content in a formatted way.
     pub fn print(&self, mut printer: Printer<NetworkDriver>) -> Result<()> {
         for line in self.content.iter() {
-            for word in line.words.iter() {
+            for (index, word) in line.words.iter().enumerate() {
                 printer
                     .bold(word.is_bold)?
                     .underline(match word.is_underlined {
@@ -103,7 +120,9 @@ impl PrintBuilder {
                     TextSize::ExtraLarge => printer.size(3, 3)?,
                 };
                 printer.write(&word.content)?;
-                printer.write(" ")?;
+                if index < line.words.len() - 1 {
+                    printer.write(" ")?;
+                }
             }
             printer.feed()?;
         }

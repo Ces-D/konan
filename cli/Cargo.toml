@@ -11,6 +11,7 @@ env_logger.workspace = true
 log.workspace = true
 strum.workspace = true
 tokio.workspace = true
+rand.workspace = true
 
 rongta.workspace = true
 ai.workspace = true

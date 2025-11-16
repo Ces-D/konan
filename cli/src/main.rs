@@ -1,5 +1,6 @@
 mod art_command;
 mod file_command;
+mod template_command;
 
 use clap::{Parser, Subcommand};
 
@@ -9,6 +10,8 @@ pub enum Commands {
     File(file_command::FileArgs),
     #[clap(about = "Print ai art")]
     Art(art_command::ArtArgs),
+    #[clap(about = "Print a predefined template")]
+    Template(template_command::TemplateArgs),
 }
 
 #[derive(Debug, clap::Parser)]
@@ -32,5 +35,8 @@ async fn main() -> anyhow::Result<()> {
     match app.command {
         Commands::File(file_args) => file_command::handle_file_command(file_args, app.no_cut).await,
         Commands::Art(art_args) => art_command::handle_art_command(art_args, app.no_cut).await,
+        Commands::Template(template_args) => {
+            template_command::handle_template_command(template_args, app.no_cut).await
+        }
     }
 }
