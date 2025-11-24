@@ -9,7 +9,7 @@ pub enum TemplateCommand {
     Box {
         #[clap(
             help = "The height of the box in rows. 1in ~= 8rows",
-            default_value = "40"
+            default_value = "30"
         )]
         rows: Option<u32>,
     },
@@ -101,7 +101,7 @@ mod tests {
     fn read_all_box_templates() {
         let templates = get_box_templates().expect("Failed to read box templates file");
         assert_eq!(
-            18,
+            23,
             templates.len(),
             "Either parsing logic error or the templates were updated to contain a different number of templates"
         );
@@ -110,7 +110,7 @@ mod tests {
             templates.first().unwrap().top
         );
         assert_eq!(
-            "OOooOOooOOooOOooOOooOOooOOooOOooOOooOOooOOooOOoo".to_string(),
+            "&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&".to_string(),
             templates.last().unwrap().bottom
         )
     }

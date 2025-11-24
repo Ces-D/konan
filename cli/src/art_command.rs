@@ -1,4 +1,5 @@
 use clap::Parser;
+use log::info;
 
 #[derive(Debug, Parser)]
 pub struct ArtArgs {
@@ -19,6 +20,7 @@ pub async fn handle_art_command(args: ArtArgs, no_cut: bool) -> anyhow::Result<(
     )
     .await?;
     let mut printer = rongta::establish_rongta_printer()?;
+    info!("Response from OpenAI: {}", response);
     if no_cut {
         printer.writeln(&response)?.print()?;
     } else {
