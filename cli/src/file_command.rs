@@ -2,6 +2,7 @@ use anyhow::bail;
 use clap::Parser;
 use log::info;
 use log::trace;
+use rongta::TextDecoration;
 use std::ffi::OsStr;
 use std::{
     fs::File,
@@ -41,15 +42,8 @@ pub fn read_file_complete<P: AsRef<Path>>(path: P) -> io::Result<String> {
 
 #[derive(Debug, Parser)]
 pub struct FileArgs {
-    path: std::path::PathBuf,
     #[clap(help = "The file path")]
-    #[clap(
-        short = 'i',
-        long = "as-is",
-        help = "A flag identifying that this should print without formatting",
-        default_value_t = false
-    )]
-    as_is: bool,
+    path: std::path::PathBuf,
 }
 
 pub async fn handle_file_command(args: FileArgs, no_cut: bool) -> anyhow::Result<()> {
@@ -63,26 +57,16 @@ pub async fn handle_file_command(args: FileArgs, no_cut: bool) -> anyhow::Result
     if extension == "md" {
         info!("Future feature will pretty print markdown files");
     }
-    let mut printer = rongta::establish_rongta_printer()?;
-    match args.as_is {
-        true => {
-            let file_content = read_file_complete(&args.path)?;
-            if no_cut {
-                printer.writeln(&file_content)?.print()?;
-            } else {
-                printer.writeln(&file_content)?.print_cut()?;
-            }
-        }
-        false => {
-            let mut print_builder = rongta::PrintBuilder::default();
-            print_builder.cut = !no_cut;
-            let file_content = read_file_lines(&args.path)?;
-            for line in file_content {
-                let line = line?;
-                print_builder.add_content(&line, rongta::TextSize::Medium, false, false)?;
-            }
-            print_builder.print(printer)?;
-        }
-    };
+    let mut builder = rongta::PrintBuilder::new(!no_cut);
+    let file_content = read_file_lines(&args.path)?;
+    for line in file_content {
+        let line = line?;
+        trace!("Reading line: {}", line);
+        builder.set_justify_content(rongta::Justify::Left);
+        builder.set_text_decoration(TextDecoration::default());
+        builder.add_content(&line)?;
+    }
+    builder.print()?;
+
     Ok(())
 }

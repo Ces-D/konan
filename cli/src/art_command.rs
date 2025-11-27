@@ -19,12 +19,13 @@ pub async fn handle_art_command(args: ArtArgs, no_cut: bool) -> anyhow::Result<(
         &args.model.expect("We provided a default value"),
     )
     .await?;
-    let mut printer = rongta::establish_rongta_printer()?;
     info!("Response from OpenAI: {}", response);
-    if no_cut {
-        printer.writeln(&response)?.print()?;
-    } else {
-        printer.writeln(&response)?.print_cut()?;
-    }
+    let mut printer = rongta::establish_rongta_printer()?;
+    printer.bold(true)?;
+    printer.writeln(&response)?;
+    match !no_cut {
+        true => printer.print_cut()?,
+        false => printer.print()?,
+    };
     Ok(())
 }

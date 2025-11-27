@@ -11,6 +11,7 @@ authors = ["Cesar <58753718+Ces-D@users.noreply.github.com>"]
 [workspace.dependencies]
 anyhow = "1.0.98"
 clap = { version = "4.5.43", features = ["cargo", "derive"] }
+chrono = "0.4.42"
 env_logger = "0.11.8"
 log = "0.4.27"
 ascii = "1.1.0"

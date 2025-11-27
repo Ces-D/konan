@@ -30,7 +30,7 @@ pub struct App {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    env_logger::builder().init();
+    init_logging();
     let app = App::parse();
     match app.command {
         Commands::File(file_args) => file_command::handle_file_command(file_args, app.no_cut).await,
@@ -39,4 +39,26 @@ async fn main() -> anyhow::Result<()> {
             template_command::handle_template_command(template_args, app.no_cut).await
         }
     }
+}
+
+fn init_logging() {
+    const MEMBERS: [&str; 3] = ["cli", "ai", "rongta"];
+
+    // Get global log level from env or use default
+    let level = std::env::var("RUST_LOG").unwrap_or_else(|_| "info".to_string());
+
+    // Build filter string applying the same level to all modules
+    let filters = MEMBERS
+        .iter()
+        .map(|m| format!("{m}={level}"))
+        .collect::<Vec<_>>()
+        .join(",");
+
+    let env = env_logger::Env::default()
+        .filter_or("RUST_LOG", &filters)
+        .write_style_or("RUST_LOG_STYLE", "always");
+
+    env_logger::Builder::from_env(env).init();
+
+    log::warn!("Logging initialized with level: {level}");
 }
