@@ -23,6 +23,8 @@ pub enum TemplateCommand {
         rows: Option<u32>,
         #[clap(short, long, help = "Something to print on the top of the template")]
         banner: Option<Heading>,
+        #[clap(short, long, help = "Print a lined piece of paper")]
+        lined: Option<bool>,
     },
 }
 
@@ -71,7 +73,11 @@ fn get_box_templates() -> anyhow::Result<Vec<BoxTemplate>> {
 
 pub async fn handle_template_command(args: TemplateArgs, no_cut: bool) -> anyhow::Result<()> {
     match args.command {
-        TemplateCommand::Box { rows, banner } => {
+        TemplateCommand::Box {
+            rows,
+            banner,
+            lined,
+        } => {
             let mut random = rand::rng();
             let templates = get_box_templates()?;
             let random_template = templates
@@ -106,7 +112,11 @@ pub async fn handle_template_command(args: TemplateArgs, no_cut: bool) -> anyhow
 
             builder.add_content(&random_template.top)?;
             for _ in 0..rows.expect("We provided a default") {
-                builder.add_content(&random_template.row)?;
+                if lined.is_some_and(|v| v == true) {
+                    builder.add_content(&random_template.row.clone().replace(" ", "."))?;
+                } else {
+                    builder.add_content(&random_template.row)?;
+                }
             }
             builder.add_content(&random_template.bottom)?;
             builder.print()?;
