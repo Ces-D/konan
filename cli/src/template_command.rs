@@ -111,9 +111,13 @@ pub async fn handle_template_command(args: TemplateArgs, no_cut: bool) -> anyhow
             });
 
             builder.add_content(&random_template.top)?;
-            for _ in 0..rows.expect("We provided a default") {
+            for i in 0..rows.expect("We provided a default") {
                 if lined.is_some_and(|v| v == true) {
-                    builder.add_content(&random_template.row.clone().replace(" ", "."))?;
+                    if i % 2 == 0 {
+                        builder.add_content(&random_template.row.clone().replace(" ", "."))?;
+                    } else {
+                        builder.add_content(&random_template.row)?;
+                    }
                 } else {
                     builder.add_content(&random_template.row)?;
                 }
