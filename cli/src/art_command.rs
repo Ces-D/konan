@@ -1,5 +1,6 @@
 use clap::Parser;
 use log::info;
+use rongta::{FormatState, StyledChar};
 
 #[derive(Debug, Parser)]
 pub struct ArtArgs {
@@ -11,6 +12,18 @@ pub struct ArtArgs {
         default_value = "gpt-5-nano-2025-08-07"
     )]
     model: Option<String>,
+}
+
+#[derive(Debug, Parser)]
+pub struct BigTextArgs {
+    #[clap(help = "The text to print in large format")]
+    text: String,
+    #[clap(
+        help = "Text size (large or extra-large or xl)",
+        short = 's',
+        default_value = "large"
+    )]
+    size: Option<String>,
 }
 
 pub async fn handle_art_command(args: ArtArgs, no_cut: bool) -> anyhow::Result<()> {
@@ -27,5 +40,28 @@ pub async fn handle_art_command(args: ArtArgs, no_cut: bool) -> anyhow::Result<(
         true => printer.print_cut()?,
         false => printer.print()?,
     };
+    Ok(())
+}
+
+pub async fn handle_big_text_command(args: BigTextArgs, no_cut: bool) -> anyhow::Result<()> {
+    let size = match args.size.as_deref() {
+        Some("extra-large") | Some("xl") => rongta::TextSize::ExtraLarge,
+        _ => rongta::TextSize::Large,
+    };
+
+    let mut builder = rongta::PrintBuilder::new(!no_cut);
+    builder.set_justify_content(rongta::Justify::Center);
+
+    for char in args.text.chars() {
+        builder.add_char_content(StyledChar {
+            ch: char,
+            state: FormatState {
+                text_size: size,
+                ..Default::default()
+            },
+        })?;
+    }
+
+    builder.print()?;
     Ok(())
 }
