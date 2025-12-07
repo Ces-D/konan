@@ -317,6 +317,7 @@ pub fn establish_rongta_printer() -> Result<Printer<NetworkDriver>> {
             CPL,
         )),
     );
+    printer.flip(false)?;
     printer.reset()?;
 
     Ok(printer)

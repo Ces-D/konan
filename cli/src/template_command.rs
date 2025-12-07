@@ -26,6 +26,17 @@ pub enum TemplateCommand {
         #[clap(short, long, help = "Print a lined piece of paper")]
         lined: Option<bool>,
     },
+    #[clap(about = "Create a habit tracker template")]
+    HabitTracker {
+        #[clap(help = "The habit to track")]
+        habit: String,
+        #[clap(
+            short,
+            long,
+            help = "Start date in YYYY-MM-DD format (defaults to today)"
+        )]
+        start_date: Option<String>,
+    },
 }
 
 #[derive(Debug, Parser)]
@@ -123,6 +134,64 @@ pub async fn handle_template_command(args: TemplateArgs, no_cut: bool) -> anyhow
                 }
             }
             builder.add_content(&random_template.bottom)?;
+            builder.print()?;
+        }
+        TemplateCommand::HabitTracker { habit, start_date } => {
+            let template_path = get_konan_templates().join("habit_tracker.txt");
+            let template_content = std::fs::read_to_string(template_path)?;
+            let lines: Vec<&str> = template_content.lines().collect();
+
+            let start = if let Some(date_str) = start_date {
+                chrono::NaiveDate::parse_from_str(&date_str, "%Y-%m-%d")
+                    .with_context(|| {
+                        format!("Invalid date format: {}. Expected YYYY-MM-DD", date_str)
+                    })?
+                    .and_hms_opt(0, 0, 0)
+                    .unwrap()
+                    .and_local_timezone(chrono::Local)
+                    .unwrap()
+            } else {
+                Local::now()
+            };
+            let end = start + Duration::days(31); // 32 days total (day 1 to day 32)
+
+            let start_str = start.format("%b %d, %Y").to_string();
+            let end_str = end.format("%b %d, %Y").to_string();
+
+            let mut builder = PrintBuilder::new(!no_cut);
+            builder.set_text_decoration(TextDecoration {
+                bold: true,
+                ..Default::default()
+            });
+
+            // Print first line (line 1)
+            if let Some(first_line) = lines.first() {
+                builder.add_content(first_line)?;
+            }
+
+            // Insert habit name below first line
+            builder.set_justify_content(Justify::Center);
+            builder.add_content(&habit.to_uppercase())?;
+            builder.set_justify_content(Justify::Left);
+
+            // Print lines 2 through second-to-last (all lines except first and last)
+            if lines.len() > 1 {
+                for line in lines.iter().skip(1).take(lines.len() - 2) {
+                    builder.add_content(line)?;
+                }
+            }
+
+            // Insert date range above last line
+            let date_range = format!("{} - {}", start_str, end_str);
+            builder.set_justify_content(Justify::Center);
+            builder.add_content(&date_range)?;
+            builder.set_justify_content(Justify::Left);
+
+            // Print last line
+            if let Some(last_line) = lines.last() {
+                builder.add_content(last_line)?;
+            }
+
             builder.print()?;
         }
     }
