@@ -105,7 +105,6 @@ impl HabitTrackerTemplateBuilder {
 
         // Process days in chunks and create lines
         for chunk in day_numbers.chunks(SEGMENTS_PER_LINE) {
-            self.builder.new_line();
             let line = chunk
                 .iter()
                 .map(|day| format!("( {:02} )", day))
