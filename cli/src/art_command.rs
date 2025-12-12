@@ -1,6 +1,13 @@
 use clap::Parser;
 use log::info;
-use rongta::{FormatState, StyledChar};
+use rongta::{FormatState, StyledChar, TextDecoration};
+
+#[derive(Debug, Clone, Copy, clap::ValueEnum, Default)]
+enum FontSize {
+    ExtraLarge,
+    #[default]
+    Large,
+}
 
 #[derive(Debug, Parser)]
 pub struct ArtArgs {
@@ -18,12 +25,8 @@ pub struct ArtArgs {
 pub struct BigTextArgs {
     #[clap(help = "The text to print in large format")]
     text: String,
-    #[clap(
-        help = "Text size (large or extra-large or xl)",
-        short = 's',
-        default_value = "large"
-    )]
-    size: Option<String>,
+    #[clap(help = "Font size", short = 's', default_value = "large")]
+    size: Option<FontSize>,
 }
 
 pub async fn handle_art_command(args: ArtArgs, no_cut: bool) -> anyhow::Result<()> {
@@ -44,9 +47,9 @@ pub async fn handle_art_command(args: ArtArgs, no_cut: bool) -> anyhow::Result<(
 }
 
 pub async fn handle_big_text_command(args: BigTextArgs, no_cut: bool) -> anyhow::Result<()> {
-    let size = match args.size.as_deref() {
-        Some("extra-large") | Some("xl") => rongta::TextSize::ExtraLarge,
-        _ => rongta::TextSize::Large,
+    let size = match args.size.unwrap_or_default() {
+        FontSize::ExtraLarge => rongta::TextSize::ExtraLarge,
+        FontSize::Large => rongta::TextSize::Large,
     };
 
     let mut builder = rongta::PrintBuilder::new(!no_cut);
@@ -57,7 +60,11 @@ pub async fn handle_big_text_command(args: BigTextArgs, no_cut: bool) -> anyhow:
             ch: char,
             state: FormatState {
                 text_size: size,
-                ..Default::default()
+                text_decoration: TextDecoration {
+                    bold: true,
+                    underline: true,
+                    ..Default::default()
+                },
             },
         })?;
     }

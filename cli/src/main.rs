@@ -1,5 +1,6 @@
 mod art_command;
 mod file_command;
+mod sytem_design;
 mod template_command;
 
 use clap::{Parser, Subcommand};

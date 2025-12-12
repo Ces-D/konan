@@ -167,6 +167,8 @@ impl Line {
 pub struct PrintBuilder {
     lines: Vec<Line>,
     cut: bool,
+    current_text_size: TextSize,
+    current_text_decoration: TextDecoration,
 }
 
 impl PrintBuilder {
@@ -201,6 +203,7 @@ impl PrintBuilder {
 
     /// Add content to the current line. The content is formatted according to the current formatting state.
     /// This is a more efficient way to add content that needs the same formatting.
+    /// Highly recommended to call `new_line()` after adding content to the current line.
     pub fn add_content(&mut self, content: &str) -> Result<()> {
         let mut current_line = self.lines.pop().unwrap_or_else(|| Line {
             justify_content: self.current_line_justify_content(),
@@ -208,12 +211,10 @@ impl PrintBuilder {
         });
 
         for char in content.chars() {
-            let current_state = current_line
-                .chars
-                .last()
-                .map(|sc| sc.state)
-                .unwrap_or_default();
-
+            let current_state = FormatState {
+                text_size: self.current_text_size,
+                text_decoration: self.current_text_decoration,
+            };
             let new_line = current_line.add_char(StyledChar {
                 ch: char,
                 state: current_state,
@@ -226,7 +227,6 @@ impl PrintBuilder {
         }
 
         self.lines.push(current_line);
-        self.new_line();
         Ok(())
     }
 
@@ -249,23 +249,14 @@ impl PrintBuilder {
         }
     }
 
-    /// Set the text size of the last character if it exists
+    /// Set the text size of the next characters
     pub fn set_text_size(&mut self, size: TextSize) {
-        if let Some(last_line) = self.lines.last_mut() {
-            if let Some(last_char) = last_line.chars.last_mut() {
-                last_char.state.text_size = size;
-            }
-        }
+        self.current_text_size = size;
     }
 
-    /// Set the text decoration of the last character if it exists
+    /// Set the text decoration of the next characters
     pub fn set_text_decoration(&mut self, decoration: TextDecoration) {
-        let last_line = self.lines.last_mut();
-        if let Some(last_line) = last_line {
-            if let Some(last_char) = last_line.chars.last_mut() {
-                last_char.state.text_decoration = decoration;
-            }
-        }
+        self.current_text_decoration = decoration;
     }
 
     pub fn print(&self) -> Result<()> {
