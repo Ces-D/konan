@@ -259,19 +259,50 @@ impl PrintBuilder {
         self.current_text_decoration = decoration;
     }
 
-    pub fn print(&self) -> Result<()> {
-        let mut printer = establish_rongta_printer()?;
-        for line in &self.lines {
-            line.justify_content.to_print_command(&mut printer)?;
-            for styled_char in &line.chars {
-                styled_char.to_print_command(&mut printer)?;
+    pub fn print(&self, rows: Option<u32>) -> Result<()> {
+        if let Some(rows_per_page) = rows {
+            // Paginated printing with cuts after each page
+            let mut line_count = 0;
+            let mut printer = establish_rongta_printer()?;
+
+            for line in &self.lines {
+                line.justify_content.to_print_command(&mut printer)?;
+                for styled_char in &line.chars {
+                    styled_char.to_print_command(&mut printer)?;
+                }
+                printer.feed()?;
+                line_count += 1;
+
+                if line_count >= rows_per_page {
+                    printer.print_cut()?;
+                    printer = establish_rongta_printer()?;
+                    line_count = 0;
+                }
             }
-            printer.feed()?;
+
+            // Pad remaining lines to fill the page
+            if line_count > 0 {
+                while line_count < rows_per_page {
+                    printer.feed()?;
+                    line_count += 1;
+                }
+                printer.print_cut()?;
+            }
+        } else {
+            // Original behavior
+            let mut printer = establish_rongta_printer()?;
+            for line in &self.lines {
+                line.justify_content.to_print_command(&mut printer)?;
+                for styled_char in &line.chars {
+                    styled_char.to_print_command(&mut printer)?;
+                }
+                printer.feed()?;
+            }
+            match self.cut {
+                true => printer.print_cut()?,
+                false => printer.print()?,
+            };
         }
-        match self.cut {
-            true => printer.print_cut()?,
-            false => printer.print()?,
-        };
         Ok(())
     }
 }

@@ -23,26 +23,32 @@ pub struct App {
     #[clap(subcommand)]
     pub command: Commands,
     #[clap(
-        short = 'n',
-        long = "no-cut",
-        help = "A flag identifying that the printer should not cut after printing",
+        short = 'l',
+        long = "lines",
+        help = "Number of lines per page (cuts after each page). Set to 0 for no pagination.",
+        default_value = "50",
         global = true
     )]
-    no_cut: bool,
+    lines: u32,
 }
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     init_logging();
     let app = App::parse();
+    let lines = if app.lines == 0 {
+        None
+    } else {
+        Some(app.lines)
+    };
     match app.command {
-        Commands::File(file_args) => file_command::handle_file_command(file_args, app.no_cut).await,
-        Commands::Art(art_args) => art_command::handle_art_command(art_args, app.no_cut).await,
+        Commands::File(file_args) => file_command::handle_file_command(file_args, lines).await,
+        Commands::Art(art_args) => art_command::handle_art_command(art_args, lines).await,
         Commands::BigText(big_text_args) => {
-            art_command::handle_big_text_command(big_text_args, app.no_cut).await
+            art_command::handle_big_text_command(big_text_args, lines).await
         }
         Commands::Template(template_args) => {
-            template_command::handle_template_command(template_args, app.no_cut).await
+            template_command::handle_template_command(template_args, lines).await
         }
     }
 }

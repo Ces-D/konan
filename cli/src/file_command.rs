@@ -1,10 +1,9 @@
 use anyhow::bail;
 use clap::Parser;
-use log::info;
-use log::trace;
+use log::{info, trace};
 use rongta::TextDecoration;
-use std::ffi::OsStr;
 use std::{
+    ffi::OsStr,
     fs::File,
     io::{self, BufRead, BufReader},
     path::Path,
@@ -30,9 +29,12 @@ pub fn read_file_lines<P: AsRef<Path>>(path: P) -> io::Result<io::Lines<BufReade
 pub struct FileArgs {
     #[clap(help = "The file path")]
     path: std::path::PathBuf,
+
+    #[clap(short, long, help = "Number of rows per page (cuts after each page)")]
+    rows: Option<usize>,
 }
 
-pub async fn handle_file_command(args: FileArgs, no_cut: bool) -> anyhow::Result<()> {
+pub async fn handle_file_command(args: FileArgs, lines: Option<u32>) -> anyhow::Result<()> {
     if !args.path.exists() {
         bail!("Path does not exist: {}", args.path.display());
     }
@@ -43,17 +45,25 @@ pub async fn handle_file_command(args: FileArgs, no_cut: bool) -> anyhow::Result
     if extension == "md" {
         info!("Future feature will pretty print markdown files");
     }
-    let mut builder = rongta::PrintBuilder::new(!no_cut);
+
+    let mut builder = rongta::PrintBuilder::new(false);
     let file_content = read_file_lines(&args.path)?;
+
     for line in file_content {
         let line = line?;
         trace!("Reading line: {}", line);
         builder.set_justify_content(rongta::Justify::Left);
-        builder.set_text_decoration(TextDecoration::default());
+        builder.set_text_decoration(TextDecoration {
+            bold: true,
+            ..Default::default()
+        });
         builder.add_content(&line)?;
         builder.new_line();
     }
-    builder.print()?;
+
+    // If args.rows is specified, use that; otherwise use the global lines parameter
+    let pagination = args.rows.map(|r| r as u32).or(lines);
+    builder.print(pagination)?;
 
     Ok(())
 }

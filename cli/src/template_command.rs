@@ -46,7 +46,10 @@ pub struct TemplateArgs {
     pub command: TemplateCommand,
 }
 
-pub async fn handle_template_command(args: TemplateArgs, no_cut: bool) -> anyhow::Result<()> {
+pub async fn handle_template_command(
+    args: TemplateArgs,
+    _lines: Option<u32>,
+) -> anyhow::Result<()> {
     match args.command {
         TemplateCommand::Box {
             rows,
@@ -54,7 +57,7 @@ pub async fn handle_template_command(args: TemplateArgs, no_cut: bool) -> anyhow
             date_banner,
         } => {
             let pattern = crate::sytem_design::get_random_box_pattern()?;
-            let builder = PrintBuilder::new(!no_cut);
+            let builder = PrintBuilder::new(false);
             let mut template = BoxTemplateBuilder::new(builder, pattern);
             template
                 .set_rows(rows.unwrap_or(29))
@@ -68,7 +71,7 @@ pub async fn handle_template_command(args: TemplateArgs, no_cut: bool) -> anyhow
             time_period,
         } => {
             let pattern = crate::sytem_design::get_random_box_pattern()?;
-            let builder = PrintBuilder::new(!no_cut);
+            let builder = PrintBuilder::new(false);
 
             let start = if let Some(date_str) = start_date {
                 chrono::NaiveDate::parse_from_str(&date_str, "%Y-%m-%d")

@@ -132,7 +132,7 @@ impl HabitTrackerTemplateBuilder {
         self.with_top()?;
         self.with_checkmarks()?;
         self.with_bottom()?;
-        self.builder.print()?;
+        self.builder.print(None)?;
         log::info!("Printed habit tracker template");
         Ok(())
     }

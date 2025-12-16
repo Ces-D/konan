@@ -29,7 +29,7 @@ pub struct BigTextArgs {
     size: Option<FontSize>,
 }
 
-pub async fn handle_art_command(args: ArtArgs, no_cut: bool) -> anyhow::Result<()> {
+pub async fn handle_art_command(args: ArtArgs, _lines: Option<u32>) -> anyhow::Result<()> {
     let response = ai::generate_ascii_art(
         &args.idea,
         &args.model.expect("We provided a default value"),
@@ -39,20 +39,18 @@ pub async fn handle_art_command(args: ArtArgs, no_cut: bool) -> anyhow::Result<(
     let mut printer = rongta::establish_rongta_printer()?;
     printer.bold(true)?;
     printer.writeln(&response)?;
-    match !no_cut {
-        true => printer.print_cut()?,
-        false => printer.print()?,
-    };
+    // Always cut for art command since it's typically standalone output
+    printer.print_cut()?;
     Ok(())
 }
 
-pub async fn handle_big_text_command(args: BigTextArgs, no_cut: bool) -> anyhow::Result<()> {
+pub async fn handle_big_text_command(args: BigTextArgs, lines: Option<u32>) -> anyhow::Result<()> {
     let size = match args.size.unwrap_or_default() {
         FontSize::ExtraLarge => rongta::TextSize::ExtraLarge,
         FontSize::Large => rongta::TextSize::Large,
     };
 
-    let mut builder = rongta::PrintBuilder::new(!no_cut);
+    let mut builder = rongta::PrintBuilder::new(false);
     builder.set_justify_content(rongta::Justify::Center);
 
     for char in args.text.chars() {
@@ -69,6 +67,6 @@ pub async fn handle_big_text_command(args: BigTextArgs, no_cut: bool) -> anyhow:
         })?;
     }
 
-    builder.print()?;
+    builder.print(lines)?;
     Ok(())
 }

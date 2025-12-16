@@ -105,7 +105,7 @@ impl BoxTemplateBuilder {
         self.with_top()?;
         self.with_rows()?;
         self.with_bottom()?;
-        self.builder.print()?;
+        self.builder.print(None)?;
         log::info!("Printed box template");
         Ok(())
     }
