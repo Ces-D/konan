@@ -181,7 +181,7 @@ impl PrintBuilder {
 
     fn current_line_justify_content(&self) -> Justify {
         if self.lines.is_empty() {
-            return Default::default();
+            Default::default()
         } else {
             self.lines.last().unwrap().justify_content
         }
@@ -264,7 +264,6 @@ impl PrintBuilder {
             // Paginated printing with cuts after each page
             let mut line_count = 0;
             let mut printer = establish_rongta_printer()?;
-
             for line in &self.lines {
                 line.justify_content.to_print_command(&mut printer)?;
                 for styled_char in &line.chars {
@@ -272,10 +271,10 @@ impl PrintBuilder {
                 }
                 printer.feed()?;
                 line_count += 1;
-
                 if line_count >= rows_per_page {
                     printer.print_cut()?;
-                    printer = establish_rongta_printer()?;
+                    // printer = establish_rongta_printer()?; #TODO: if the app continues to work,
+                    // delete this comment
                     line_count = 0;
                 }
             }

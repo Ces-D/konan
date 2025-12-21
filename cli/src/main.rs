@@ -11,8 +11,6 @@ pub enum Commands {
     File(file_command::FileArgs),
     #[clap(about = "Print ai art")]
     Art(art_command::ArtArgs),
-    #[clap(about = "Print text in large format")]
-    BigText(art_command::BigTextArgs),
     #[clap(about = "Print a predefined template")]
     Template(template_command::TemplateArgs),
 }
@@ -23,32 +21,27 @@ pub struct App {
     #[clap(subcommand)]
     pub command: Commands,
     #[clap(
-        short = 'l',
-        long = "lines",
-        help = "Number of lines per page (cuts after each page). Set to 0 for no pagination.",
-        default_value = "50",
+        short,
+        long,
+        help = "Cut or not to cut.",
+        long_help = "The `rows` arg in commands ignores this flag",
         global = true
     )]
-    lines: u32,
+    no_cut: bool,
 }
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     init_logging();
     let app = App::parse();
-    let lines = if app.lines == 0 {
-        None
-    } else {
-        Some(app.lines)
-    };
+
     match app.command {
-        Commands::File(file_args) => file_command::handle_file_command(file_args, lines).await,
-        Commands::Art(art_args) => art_command::handle_art_command(art_args, lines).await,
-        Commands::BigText(big_text_args) => {
-            art_command::handle_big_text_command(big_text_args, lines).await
+        Commands::File(file_args) => {
+            file_command::handle_file_command(file_args, !app.no_cut).await
         }
+        Commands::Art(art_args) => art_command::handle_art_command(art_args, !app.no_cut).await,
         Commands::Template(template_args) => {
-            template_command::handle_template_command(template_args, lines).await
+            template_command::handle_template_command(template_args, !app.no_cut).await
         }
     }
 }

@@ -20,7 +20,6 @@ pub fn read_file_lines<P: AsRef<Path>>(path: P) -> io::Result<io::Lines<BufReade
     } else {
         std::env::current_dir()?.join(input_path)
     };
-
     let file = File::open(abs_path)?;
     Ok(BufReader::new(file).lines())
 }
@@ -29,12 +28,11 @@ pub fn read_file_lines<P: AsRef<Path>>(path: P) -> io::Result<io::Lines<BufReade
 pub struct FileArgs {
     #[clap(help = "The file path")]
     path: std::path::PathBuf,
-
     #[clap(short, long, help = "Number of rows per page (cuts after each page)")]
-    rows: Option<usize>,
+    rows: Option<u32>,
 }
 
-pub async fn handle_file_command(args: FileArgs, lines: Option<u32>) -> anyhow::Result<()> {
+pub async fn handle_file_command(args: FileArgs, cut: bool) -> anyhow::Result<()> {
     if !args.path.exists() {
         bail!("Path does not exist: {}", args.path.display());
     }
@@ -46,7 +44,7 @@ pub async fn handle_file_command(args: FileArgs, lines: Option<u32>) -> anyhow::
         info!("Future feature will pretty print markdown files");
     }
 
-    let mut builder = rongta::PrintBuilder::new(false);
+    let mut builder = rongta::PrintBuilder::new(cut);
     let file_content = read_file_lines(&args.path)?;
 
     for line in file_content {
@@ -62,8 +60,7 @@ pub async fn handle_file_command(args: FileArgs, lines: Option<u32>) -> anyhow::
     }
 
     // If args.rows is specified, use that; otherwise use the global lines parameter
-    let pagination = args.rows.map(|r| r as u32).or(lines);
+    let pagination = args.rows;
     builder.print(pagination)?;
-
     Ok(())
 }
