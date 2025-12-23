@@ -63,6 +63,14 @@ impl BoxTemplateBuilder {
 
     // Add a centered banner with the date
     fn with_date_banner(&mut self) -> Result<()> {
+        self.builder.reset_styles();
+        self.builder.set_justify_content(Justify::Center);
+        self.builder.set_text_decoration(TextDecoration {
+            bold: true,
+            underline: true,
+            ..Default::default()
+        });
+
         match self.date {
             Some(d) => {
                 let date = match d {
@@ -76,13 +84,6 @@ impl BoxTemplateBuilder {
                     DateBanner::Sat => next_weekday(chrono::Weekday::Sat),
                     DateBanner::Sun => next_weekday(chrono::Weekday::Sun),
                 };
-                self.builder.set_justify_content(Justify::Center);
-                self.builder.set_text_decoration(TextDecoration {
-                    bold: true,
-                    underline: true,
-                    ..Default::default()
-                });
-                self.builder.set_text_size(rongta::TextSize::Medium);
                 let str_date = date.format("%A, %B %d, %Y").to_string();
                 self.builder.add_content(&str_date)?;
                 self.builder.new_line();
@@ -97,6 +98,7 @@ impl BoxTemplateBuilder {
         self
     }
     fn with_text_banner(&mut self) -> Result<()> {
+        self.builder.reset_styles();
         match &self.banner {
             Some(b) => {
                 self.builder.set_justify_content(Justify::Center);
@@ -125,7 +127,7 @@ impl BoxTemplateBuilder {
     }
 
     fn with_rows(&mut self) -> Result<()> {
-        self.builder.set_justify_content(Justify::Left);
+        self.builder.reset_styles();
         self.builder.set_text_decoration(TextDecoration {
             bold: true,
             ..Default::default()
@@ -149,12 +151,22 @@ impl BoxTemplateBuilder {
     }
 
     fn with_top(&mut self) -> Result<()> {
+        self.builder.reset_styles();
+        self.builder.set_text_decoration(TextDecoration {
+            bold: true,
+            ..Default::default()
+        });
         self.builder.add_content(&self.pattern.top)?;
         self.builder.new_line();
         Ok(())
     }
 
     fn with_bottom(&mut self) -> Result<()> {
+        self.builder.reset_styles();
+        self.builder.set_text_decoration(TextDecoration {
+            bold: true,
+            ..Default::default()
+        });
         self.builder.add_content(&self.pattern.bottom)?;
         self.builder.new_line();
         Ok(())

@@ -259,6 +259,11 @@ impl PrintBuilder {
         self.current_text_decoration = decoration;
     }
 
+    pub fn reset_styles(&mut self) {
+        self.current_text_size = TextSize::default();
+        self.current_text_decoration = TextDecoration::default();
+    }
+
     pub fn print(&self, rows: Option<u32>) -> Result<()> {
         if let Some(rows_per_page) = rows {
             // Paginated printing with cuts after each page
