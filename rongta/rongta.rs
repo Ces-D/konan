@@ -24,6 +24,17 @@ pub enum TextSize {
     Large,
     ExtraLarge,
 }
+impl TextSize {
+    /// Returns the visual width of a character with this text size.
+    /// Medium = 1 column, Large = 2 columns, ExtraLarge = 3 columns.
+    pub fn char_width(&self) -> usize {
+        match self {
+            TextSize::Medium => 1,
+            TextSize::Large => 2,
+            TextSize::ExtraLarge => 3,
+        }
+    }
+}
 impl ToPrintCommand for TextSize {
     fn to_print_command(&self, printer: &mut Printer<NetworkDriver>) -> Result<()> {
         match self {
@@ -104,26 +115,50 @@ struct Line {
     pub justify_content: Justify,
 }
 impl Line {
+    /// Calculate the visual width of the line, accounting for text size.
+    fn visual_width(&self) -> usize {
+        self.chars
+            .iter()
+            .map(|sc| sc.state.text_size.char_width())
+            .sum()
+    }
+
+    /// Find the character index where we should soft-wrap (at whitespace).
+    /// Returns None if the line fits within CPL or no whitespace is found.
     fn find_wrap_point(&self) -> Option<usize> {
-        if self.chars.len() <= CPL as usize {
+        if self.visual_width() <= CPL as usize {
             return None;
         }
         trace!(
             "Finding wrap point for {:?}",
             self.chars.iter().map(|sc| sc.ch).collect::<Vec<char>>()
         );
-        self.chars
-            .iter()
-            .take(CPL as usize)
-            .enumerate()
-            .rfind(|(_, sc)| sc.ch.is_whitespace())
-            .map(|(idx, _)| idx)
+
+        // Find the last whitespace before we exceed CPL visual width
+        let mut width = 0;
+        let mut last_whitespace_idx: Option<usize> = None;
+
+        for (i, sc) in self.chars.iter().enumerate() {
+            if sc.ch.is_whitespace() && width <= CPL as usize {
+                last_whitespace_idx = Some(i);
+            }
+
+            width += sc.state.text_size.char_width();
+
+            // Once we've exceeded CPL, stop looking
+            if width > CPL as usize {
+                break;
+            }
+        }
+
+        last_whitespace_idx
     }
 
-    /// Add a character to the line, and return a new line if the line is full
+    /// Add a character to the line, and return a new line if the line is full.
+    /// Uses visual width (accounting for text size) to determine when to wrap.
     fn add_char(&mut self, sch: StyledChar) -> Option<Line> {
         self.chars.push(sch);
-        if self.chars.len() > CPL as usize {
+        if self.visual_width() > CPL as usize {
             if let Some(wrap_point) = self.find_wrap_point() {
                 trace!(
                     "Wrapping line at {} for {:?}",
@@ -144,9 +179,10 @@ impl Line {
                     return Some(new_line);
                 }
             } else {
-                trace!("No whitespace found, hard wrap for {:?}", self.chars.last());
+                trace!("No whitespace found, hard wrap for {:?}", self.chars.last(),);
                 // No whitespace found, hard wrap
-                let remainder = self.chars.split_off(CPL as usize);
+                trace!("Wrapping at {}", self.chars.len() - 1);
+                let remainder = self.chars.split_off(self.chars.len() - 1);
                 if remainder.is_empty() {
                     return None;
                 } else {

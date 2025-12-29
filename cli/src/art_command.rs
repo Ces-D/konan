@@ -54,7 +54,9 @@ pub async fn handle_art_command(args: ArtArgs, cut: bool) -> anyhow::Result<()> 
             let pattern = crate::sytem_design::get_random_box_pattern()?;
             let mut builder = rongta::PrintBuilder::new(cut);
             builder.add_content(&pattern.top)?;
+            builder.new_line();
             builder.add_content(&pattern.top)?;
+            builder.new_line();
             builder.new_line();
             for c in message.chars() {
                 builder.add_char_content(rongta::StyledChar {
@@ -68,8 +70,11 @@ pub async fn handle_art_command(args: ArtArgs, cut: bool) -> anyhow::Result<()> 
                     },
                 })?;
             }
+            builder.new_line();
             builder.add_content(&pattern.top)?;
+            builder.new_line();
             builder.add_content(&pattern.top)?;
+            builder.new_line();
             builder.new_line();
             builder.print(None)?;
             Ok(())
