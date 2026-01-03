@@ -7,9 +7,9 @@ use escpos::{
     utils::{Protocol, UnderlineMode},
 };
 use log::{error, trace};
-use std::str::FromStr;
 
 pub const CPL: u8 = 48; // characters per line
+use std::str::FromStr;
 const IP: &str = "192.168.1.87";
 const PORT: u16 = 9100;
 
@@ -298,6 +298,7 @@ impl PrintBuilder {
     pub fn reset_styles(&mut self) {
         self.current_text_size = TextSize::default();
         self.current_text_decoration = TextDecoration::default();
+        self.set_justify_content(Justify::Left);
     }
 
     pub fn print(&self, rows: Option<u32>) -> Result<()> {

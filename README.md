@@ -1,42 +1,75 @@
 # Konan
 
-Konan is a system for receiving messages and media from a client (like a phone or laptop), processing them, and printing them on a Rongta RP326 receipt printer. The goal is to create a seamless chat-like interface for physical printing.
+Konan is a system for receiving messages and media from a client (like a phone or laptop), processing them, and printing them on a Rongta RP326 receipt printer. The goal is to create a seamless interface for physical printing.
 
-## Overview
+## Rongta Model RP326
 
-The project is designed with a hybrid architecture: a cloud-based backend for processing and queuing, and a local agent for printer communication. This decouples the core logic from the local network and allows for a scalable, event-driven system.
+> 📌 A “code page” controls how byte values map to printed characters — especially accented letters and special symbols.
+> Different printers may support slightly different sets, but these are the most common.
 
-The primary output format is ASCII text, ensuring compatibility and simplicity. Media files (photos, video, audio) are not printed directly but are converted into ASCII art or text summaries by an AI service.
+[ Manual ](https://www.cleancss.com/user-manuals/2AD6G/-RP326-USE)
+---
 
-## Architecture
+### Common ESC/POS Code Pages (with examples)
 
-The system is composed of two main parts:
+| Codepage                   | Region / Language Focus          | Examples of Characters & Symbols (besides basic A–Z) |
+| -------------------------- | -------------------------------- | ---------------------------------------------------- |
+| **PC437 (USA)**            | Original IBM PC / U.S. English   | ñ, ç, £, ¥, §, ±, √, ░▒▓                             |
+| **Katakana**               | Japanese Katakana symbols        | ｱ ｲ ｳ ｴ ｵ ｶ ｷ ﾀ ﾅ ﾏ (half-width)                     |
+| **PC850 (Multilingual)**   | Western European (broad)         | é, è, ä, ö, ü, à, ç, ñ, ß                            |
+| **PC860**                  | Portuguese                       | ã, õ, ê, ç, Â, Ô                                     |
+| **PC863**                  | Canadian French                  | é, è, ê, à, ç, û                                     |
+| **PC865**                  | Nordic / Scandinavian            | Ø, ø, Å, å, Æ, æ                                     |
+| **WPC1252 (Windows-1252)** | Western Europe (modern default)  | €, é, è, ä, ö, ü, ñ, œ, Œ                            |
+| **PC866**                  | Cyrillic (Russian, etc.)         | д, ж, й, п, ч, ш, Я, Ю                               |
+| **PC852**                  | Central/Eastern Europe (Latin-2) | ł, ą, ż, š, č, ř, ť, ě                               |
+| **PC858**                  | PC850 + Euro update              | €, é, ç, ñ, ä, ö, ü                                  |
 
-1.  **Cloud Backend (AWS Serverless)**:
+> 👉 **PC437, PC850, and WPC1252** are the most common in POS software.
+> 👉 **WPC1252** is often the safest modern choice if you print European accents **and** the Euro sign (€).
 
-    - **API Gateway**: Provides an HTTP endpoint (`/messages`) to receive requests.
-    - **AWS Lambda**: The core processing engine. It handles incoming requests, interacts with AI services for content enhancement, and enqueues print jobs.
-    - **Amazon SQS (FIFO)**: A First-In, First-Out queue to manage print jobs, ensuring they are processed in the correct order.
-    - **Amazon S3**: Used for handling file uploads via presigned URLs (for larger assets, not used in the MVP for small, inline media).
+---
 
-2.  **Local Agent**:
-    - A lightweight application running on the same local network as the printer.
-    - **Responsibilities**:
-      - Polls the SQS queue for new print jobs.
-      - Sends the job payload (ASCII text) directly to the Rongta printer via a raw TCP connection (`<printer-ip>:9100`).
-      - Handles printer-specific commands like cutting the paper.
-    - **Technology**: Intended to be implemented in Node.js/TypeScript.
+### What “symbols” really change between code pages
 
-## Features
+Changing the code page mainly affects:
 
-- **Multiple Input Modes**: Clients can specify how a message is handled:
-  - `echo`: Print the text as-is.
-  - `enhance`: Use an AI service to summarize or reformat the content.
-  - `auto`: Let the backend decide the best mode.
-- **Media-to-ASCII**: Photos, videos, and audio are converted into text-based representations for printing.
-- **Strict Print Ordering**: A single SQS FIFO queue ensures that jobs are printed in the order they are received.
-- **Local Printing**: The local agent bridges the gap between the cloud and the LAN-connected printer.
+- **Accented letters**
+  (é è ê à ñ ç ä ö ü ø å ł ą …)
+- **Currency signs**
+  ($, £, ¥, €, sometimes ₫, ₤)
+- **Language-specific letters**
+  (Å, Ø, Æ in Nordic; ł, ň, ž in Central Europe; Cyrillic in PC866)
+- **Legacy box-drawing characters** in PC437
+  (useful for receipt borders)
 
-## Development Status
+Example:
+If your app sends the byte `0x80`…
 
-The project has currently gone a different direction. The printer is connected via network and the application cli is operational. Future plans are in development.
+- in **PC437**, it prints `Ç`
+- in **WPC1252**, it prints `€`
+
+Same byte — **different characters** depending on code page.
+
+---
+
+### How this affects you in practice
+
+- If accented characters look **wrong or garbled**, select another code page.
+- Most modern POS systems use **WPC1252** by default.
+- If you print **Russian or Cyrillic**, switch to **PC866**.
+- Older restaurant systems sometimes expect **PC850**.
+
+---
+
+### Quick reference: When to choose which
+
+- ✅ **English only** → PC437 or WPC1252
+- ✅ **Spanish, French, German, Italian, etc.** → WPC1252 or PC850
+- ✅ **Portuguese (Brazil/Portugal)** → PC860 or WPC1252
+- ✅ **Nordic (Norway/Sweden/Denmark)** → PC865
+- ✅ **Central/Eastern Europe** → PC852
+- ✅ **Russian/Cyrillic** → PC866
+- ✅ **Japanese Katakana text labels** → Katakana
+
+---

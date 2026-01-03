@@ -9,6 +9,8 @@ use std::{
     path::Path,
 };
 
+use crate::sytem_design::markdown_adapter::MarkdownFileAdapter;
+
 /// Reads a file line by line from a given path using an iterator.
 /// This is memory-efficient as it doesn't load the whole file into memory.
 /// Returns an iterator over the lines of the file.
@@ -39,28 +41,35 @@ pub async fn handle_file_command(args: FileArgs, cut: bool) -> anyhow::Result<()
     if !args.path.is_file() {
         bail!("Path is not a file: {}", args.path.display());
     }
+
     let extension = args.path.extension().unwrap_or_else(|| OsStr::new("txt"));
-    if extension == "md" {
-        info!("Future feature will pretty print markdown files");
-    }
-
-    let mut builder = rongta::PrintBuilder::new(cut);
-    let file_content = read_file_lines(&args.path)?;
-
-    for line in file_content {
-        let line = line?;
-        trace!("Reading line: {}", line);
-        builder.set_justify_content(rongta::Justify::Left);
-        builder.set_text_decoration(TextDecoration {
-            bold: true,
-            ..Default::default()
-        });
-        builder.add_content(&line)?;
-        builder.new_line();
-    }
-
-    // If args.rows is specified, use that; otherwise use the global lines parameter
     let pagination = args.rows;
-    builder.print(pagination)?;
+
+    if extension == "md" {
+        // Markdown rendering path
+        info!("Rendering markdown file with formatting");
+        let content = std::fs::read_to_string(&args.path)?;
+        let builder = rongta::PrintBuilder::new(cut);
+        let mut renderer = MarkdownFileAdapter::new(builder);
+        renderer.print(&content, pagination)?;
+    } else {
+        // Plain text rendering path (existing logic)
+        let mut builder = rongta::PrintBuilder::new(cut);
+        let file_content = read_file_lines(&args.path)?;
+
+        for line in file_content {
+            let line = line?;
+            trace!("Reading line: {}", line);
+            builder.set_justify_content(rongta::Justify::Left);
+            builder.set_text_decoration(TextDecoration {
+                bold: true,
+                ..Default::default()
+            });
+            builder.add_content(&line)?;
+            builder.new_line();
+        }
+        builder.print(pagination)?;
+    }
+
     Ok(())
 }
