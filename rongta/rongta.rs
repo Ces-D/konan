@@ -1,5 +1,4 @@
-use anyhow::{Result, anyhow, bail};
-use ascii::AsciiString;
+use anyhow::{Result, anyhow};
 use escpos::{
     driver::NetworkDriver,
     printer::Printer,
@@ -8,8 +7,9 @@ use escpos::{
 };
 use log::{error, trace};
 
+mod cp437;
+
 pub const CPL: u8 = 48; // characters per line
-use std::str::FromStr;
 const IP: &str = "192.168.1.87";
 const PORT: u16 = 9100;
 
@@ -101,10 +101,10 @@ pub struct StyledChar {
 }
 impl ToPrintCommand for StyledChar {
     fn to_print_command(&self, printer: &mut Printer<NetworkDriver>) -> Result<()> {
-        let ascii_content = ascii_only(&self.ch.to_string())?;
+        let ascii_content = cp437::cp437_char_only(self.ch)?;
         self.state.text_size.to_print_command(printer)?;
         self.state.text_decoration.to_print_command(printer)?;
-        printer.write(&ascii_content)?;
+        printer.write(&ascii_content.to_string())?;
         Ok(())
     }
 }
@@ -345,17 +345,6 @@ impl PrintBuilder {
             };
         }
         Ok(())
-    }
-}
-
-fn ascii_only(s: &str) -> Result<String> {
-    match AsciiString::from_str(s) {
-        Ok(s) => Ok(s.into()),
-        Err(e) => bail!(
-            "Non-ASCII characters detected in '{}': {}",
-            s,
-            s.chars().nth(e.valid_up_to()).unwrap()
-        ),
     }
 }
 

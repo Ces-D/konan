@@ -10,6 +10,5 @@ path = "rongta.rs"
 [dependencies]
 anyhow.workspace = true
 log.workspace = true
-ascii.workspace = true
 escpos.workspace = true
 strum.workspace = true
