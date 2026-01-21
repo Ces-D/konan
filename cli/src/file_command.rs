@@ -1,7 +1,7 @@
 use anyhow::bail;
 use clap::Parser;
 use log::{info, trace};
-use rongta::TextDecoration;
+use rongta::elements::{Justify, TextDecoration};
 use std::{
     ffi::OsStr,
     fs::File,
@@ -60,7 +60,7 @@ pub async fn handle_file_command(args: FileArgs, cut: bool) -> anyhow::Result<()
         for line in file_content {
             let line = line?;
             trace!("Reading line: {}", line);
-            builder.set_justify_content(rongta::Justify::Left);
+            builder.set_justify_content(Justify::Left);
             builder.set_text_decoration(TextDecoration {
                 bold: true,
                 ..Default::default()

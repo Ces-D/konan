@@ -1,6 +1,6 @@
 use clap::{Parser, Subcommand};
 use log::info;
-use rongta::{FormatState, TextDecoration};
+use rongta::elements::{FormatState, StyledChar, TextDecoration, TextSize};
 
 #[derive(Debug, Subcommand)]
 pub enum ArtCommand {
@@ -36,10 +36,10 @@ pub async fn handle_art_command(args: ArtArgs, cut: bool) -> anyhow::Result<()> 
             info!("Response from OpenAI: {}", response);
             let mut builder = rongta::PrintBuilder::new(cut);
             for c in response.chars() {
-                builder.add_char_content(rongta::StyledChar {
+                builder.add_char_content(StyledChar {
                     ch: c,
                     state: FormatState {
-                        text_size: rongta::TextSize::Medium,
+                        text_size: TextSize::Medium,
                         text_decoration: TextDecoration {
                             bold: true,
                             ..Default::default()
@@ -59,11 +59,11 @@ pub async fn handle_art_command(args: ArtArgs, cut: bool) -> anyhow::Result<()> 
             builder.new_line();
             builder.new_line();
             for c in message.chars() {
-                builder.add_char_content(rongta::StyledChar {
+                builder.add_char_content(StyledChar {
                     ch: c,
                     state: FormatState {
-                        text_size: rongta::TextSize::ExtraLarge,
-                        text_decoration: rongta::TextDecoration {
+                        text_size: TextSize::ExtraLarge,
+                        text_decoration: TextDecoration {
                             bold: true,
                             ..Default::default()
                         },

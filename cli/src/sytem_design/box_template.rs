@@ -1,7 +1,10 @@
 use super::BoxPattern;
 use anyhow::Result;
 use chrono::{DateTime, Datelike, Local, Weekday};
-use rongta::{Justify, PrintBuilder, TextDecoration};
+use rongta::{
+    PrintBuilder,
+    elements::{Justify, TextDecoration, TextSize},
+};
 
 /// Calculate the next occurrence of a given weekday.
 /// If today is that weekday, returns next week's occurrence.
@@ -106,7 +109,7 @@ impl BoxTemplateBuilder {
                     bold: true,
                     ..Default::default()
                 });
-                self.builder.set_text_size(rongta::TextSize::Large);
+                self.builder.set_text_size(TextSize::Large);
                 self.builder.add_content(b)?;
                 self.builder.new_line();
                 self.builder.new_line();

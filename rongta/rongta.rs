@@ -1,118 +1,142 @@
-use anyhow::{Result, anyhow};
+use anyhow::{Context, Result};
+use elements::ToPrintCommand;
 use escpos::{
-    driver::NetworkDriver,
+    driver::{Driver, NetworkDriver, UsbDriver},
     printer::Printer,
     printer_options::PrinterOptions,
-    utils::{Protocol, UnderlineMode},
+    utils::{JustifyMode, Protocol, UnderlineMode},
 };
-use log::{error, trace};
+use log::trace;
 
 mod cp437;
+pub mod elements;
 
 pub const CPL: u8 = 48; // characters per line
 const IP: &str = "192.168.1.87";
 const PORT: u16 = 9100;
+const VENDOR_ID: u16 = 0x0FE6;
+const PRODUCT_ID: u16 = 0x811E;
 
-trait ToPrintCommand {
-    fn to_print_command(&self, printer: &mut Printer<NetworkDriver>) -> Result<()>;
+/// Enum-based printer abstraction for runtime driver selection without dyn.
+pub enum AnyPrinter {
+    Usb(Printer<UsbDriver>),
+    Network(Printer<NetworkDriver>),
 }
 
-#[derive(Default, Clone, Copy, Debug, PartialEq)]
-pub enum TextSize {
-    #[default]
-    Medium,
-    Large,
-    ExtraLarge,
-}
-impl TextSize {
-    /// Returns the visual width of a character with this text size.
-    /// Medium = 1 column, Large = 2 columns, ExtraLarge = 3 columns.
-    pub fn char_width(&self) -> usize {
+impl AnyPrinter {
+    pub fn feed(&mut self) -> Result<()> {
         match self {
-            TextSize::Medium => 1,
-            TextSize::Large => 2,
-            TextSize::ExtraLarge => 3,
+            AnyPrinter::Usb(p) => {
+                p.feed()?;
+            }
+            AnyPrinter::Network(p) => {
+                p.feed()?;
+            }
         }
+        Ok(())
     }
-}
-impl ToPrintCommand for TextSize {
-    fn to_print_command(&self, printer: &mut Printer<NetworkDriver>) -> Result<()> {
+
+    pub fn print(&mut self) -> Result<()> {
         match self {
-            TextSize::Medium => printer.reset_size()?,
-            TextSize::Large => printer.size(2, 2)?,
-            TextSize::ExtraLarge => printer.size(3, 3)?,
-        };
+            AnyPrinter::Usb(p) => {
+                p.print()?;
+            }
+            AnyPrinter::Network(p) => {
+                p.print()?;
+            }
+        }
         Ok(())
     }
-}
 
-#[derive(Default, Clone, Copy, Debug, PartialEq)]
-pub struct TextDecoration {
-    pub bold: bool,
-    pub underline: bool,
-    pub italic: bool,
-}
-impl ToPrintCommand for TextDecoration {
-    fn to_print_command(&self, printer: &mut Printer<NetworkDriver>) -> Result<()> {
-        match self.bold {
-            true => printer.bold(true)?,
-            false => printer.bold(false)?,
-        };
-        match self.underline {
-            true => printer.underline(UnderlineMode::Single)?,
-            false => printer.underline(UnderlineMode::None)?,
-        };
-        match self.italic {
-            true => printer.underline(UnderlineMode::Single)?,
-            false => printer.underline(UnderlineMode::None)?,
-        };
-        Ok(())
-    }
-}
-
-#[derive(Default, Clone, Copy, Debug, PartialEq)]
-pub enum Justify {
-    #[default]
-    Left,
-    Center,
-    Right,
-}
-impl ToPrintCommand for Justify {
-    fn to_print_command(&self, printer: &mut Printer<NetworkDriver>) -> Result<()> {
+    pub fn print_cut(&mut self) -> Result<()> {
         match self {
-            Justify::Left => printer.justify(escpos::utils::JustifyMode::LEFT)?,
-            Justify::Center => printer.justify(escpos::utils::JustifyMode::CENTER)?,
-            Justify::Right => printer.justify(escpos::utils::JustifyMode::RIGHT)?,
-        };
+            AnyPrinter::Usb(p) => {
+                p.print_cut()?;
+            }
+            AnyPrinter::Network(p) => {
+                p.print_cut()?;
+            }
+        }
         Ok(())
     }
-}
 
-#[derive(Clone, Copy, Debug, PartialEq, Default)]
-pub struct FormatState {
-    pub text_size: TextSize,
-    pub text_decoration: TextDecoration,
-}
+    pub fn write(&mut self, text: &str) -> Result<()> {
+        match self {
+            AnyPrinter::Usb(p) => {
+                p.write(text)?;
+            }
+            AnyPrinter::Network(p) => {
+                p.write(text)?;
+            }
+        }
+        Ok(())
+    }
 
-#[derive(Clone, Debug)]
-pub struct StyledChar {
-    pub ch: char,
-    pub state: FormatState,
-}
-impl ToPrintCommand for StyledChar {
-    fn to_print_command(&self, printer: &mut Printer<NetworkDriver>) -> Result<()> {
-        let ascii_content = cp437::cp437_char_only(self.ch)?;
-        self.state.text_size.to_print_command(printer)?;
-        self.state.text_decoration.to_print_command(printer)?;
-        printer.write(&ascii_content.to_string())?;
+    pub fn justify(&mut self, mode: JustifyMode) -> Result<()> {
+        match self {
+            AnyPrinter::Usb(p) => {
+                p.justify(mode)?;
+            }
+            AnyPrinter::Network(p) => {
+                p.justify(mode)?;
+            }
+        }
+        Ok(())
+    }
+
+    pub fn bold(&mut self, enabled: bool) -> Result<()> {
+        match self {
+            AnyPrinter::Usb(p) => {
+                p.bold(enabled)?;
+            }
+            AnyPrinter::Network(p) => {
+                p.bold(enabled)?;
+            }
+        }
+        Ok(())
+    }
+
+    pub fn underline(&mut self, mode: UnderlineMode) -> Result<()> {
+        match self {
+            AnyPrinter::Usb(p) => {
+                p.underline(mode)?;
+            }
+            AnyPrinter::Network(p) => {
+                p.underline(mode)?;
+            }
+        }
+        Ok(())
+    }
+
+    pub fn size(&mut self, width: u8, height: u8) -> Result<()> {
+        match self {
+            AnyPrinter::Usb(p) => {
+                p.size(width, height)?;
+            }
+            AnyPrinter::Network(p) => {
+                p.size(width, height)?;
+            }
+        }
+        Ok(())
+    }
+
+    pub fn reset_size(&mut self) -> Result<()> {
+        match self {
+            AnyPrinter::Usb(p) => {
+                p.reset_size()?;
+            }
+            AnyPrinter::Network(p) => {
+                p.reset_size()?;
+            }
+        }
         Ok(())
     }
 }
 
 #[derive(Default, Debug)]
 struct Line {
-    pub chars: Vec<StyledChar>,
-    pub justify_content: Justify,
+    pub chars: Vec<elements::StyledChar>,
+    pub justify_content: elements::Justify,
 }
 impl Line {
     /// Calculate the visual width of the line, accounting for text size.
@@ -156,46 +180,30 @@ impl Line {
 
     /// Add a character to the line, and return a new line if the line is full.
     /// Uses visual width (accounting for text size) to determine when to wrap.
-    fn add_char(&mut self, sch: StyledChar) -> Option<Line> {
+    fn add_char(&mut self, sch: elements::StyledChar) -> Option<Line> {
         self.chars.push(sch);
-        if self.visual_width() > CPL as usize {
-            if let Some(wrap_point) = self.find_wrap_point() {
-                trace!(
-                    "Wrapping line at {} for {:?}",
-                    wrap_point, self.chars[wrap_point]
-                );
-                let mut remainder = self.chars.split_off(wrap_point);
-                // Remove the whitespace character at the wrap point
-                if !remainder.is_empty() {
-                    remainder.remove(0);
-                }
-                if remainder.is_empty() {
-                    return None;
-                } else {
-                    let new_line = Line {
-                        justify_content: self.justify_content,
-                        chars: remainder,
-                    };
-                    return Some(new_line);
-                }
-            } else {
-                trace!("No whitespace found, hard wrap for {:?}", self.chars.last(),);
-                // No whitespace found, hard wrap
-                trace!("Wrapping at {}", self.chars.len() - 1);
-                let remainder = self.chars.split_off(self.chars.len() - 1);
-                if remainder.is_empty() {
-                    return None;
-                } else {
-                    let new_line = Line {
-                        justify_content: self.justify_content,
-                        chars: remainder,
-                    };
-                    return Some(new_line);
-                }
-            }
+        if self.visual_width() <= CPL as usize {
+            return None;
         }
+        let remainder = if let Some(wrap_point) = self.find_wrap_point() {
+            trace!(
+                "Wrapping line at {} for {:?}",
+                wrap_point, self.chars[wrap_point]
+            );
+            let mut remainder = self.chars.split_off(wrap_point);
+            if !remainder.is_empty() {
+                remainder.remove(0); // Remove whitespace at wrap point
+            }
+            remainder
+        } else {
+            trace!("No whitespace found, hard wrap for {:?}", self.chars.last());
+            self.chars.split_off(self.chars.len() - 1)
+        };
 
-        None
+        (!remainder.is_empty()).then(|| Line {
+            justify_content: self.justify_content,
+            chars: remainder,
+        })
     }
 }
 
@@ -203,8 +211,8 @@ impl Line {
 pub struct PrintBuilder {
     lines: Vec<Line>,
     cut: bool,
-    current_text_size: TextSize,
-    current_text_decoration: TextDecoration,
+    current_text_size: elements::TextSize,
+    current_text_decoration: elements::TextDecoration,
 }
 
 impl PrintBuilder {
@@ -215,7 +223,7 @@ impl PrintBuilder {
         }
     }
 
-    fn current_line_justify_content(&self) -> Justify {
+    fn current_line_justify_content(&self) -> elements::Justify {
         if self.lines.is_empty() {
             Default::default()
         } else {
@@ -224,7 +232,7 @@ impl PrintBuilder {
     }
 
     /// Add a character to the current line. Provides greater control over formatting.
-    pub fn add_char_content(&mut self, content: StyledChar) -> Result<()> {
+    pub fn add_char_content(&mut self, content: elements::StyledChar) -> Result<()> {
         let mut current_line = self.lines.pop().unwrap_or_else(|| Line {
             justify_content: self.current_line_justify_content(),
             ..Default::default()
@@ -247,11 +255,11 @@ impl PrintBuilder {
         });
 
         for char in content.chars() {
-            let current_state = FormatState {
+            let current_state = elements::FormatState {
                 text_size: self.current_text_size,
                 text_decoration: self.current_text_decoration,
             };
-            let new_line = current_line.add_char(StyledChar {
+            let new_line = current_line.add_char(elements::StyledChar {
                 ch: char,
                 state: current_state,
             });
@@ -274,7 +282,7 @@ impl PrintBuilder {
     }
 
     /// Set the justify content of the last line or add a new line with the given justify content
-    pub fn set_justify_content(&mut self, justify: Justify) {
+    pub fn set_justify_content(&mut self, justify: elements::Justify) {
         if let Some(line) = self.lines.last_mut() {
             line.justify_content = justify;
         } else {
@@ -286,37 +294,35 @@ impl PrintBuilder {
     }
 
     /// Set the text size of the next characters
-    pub fn set_text_size(&mut self, size: TextSize) {
+    pub fn set_text_size(&mut self, size: elements::TextSize) {
         self.current_text_size = size;
     }
 
     /// Set the text decoration of the next characters
-    pub fn set_text_decoration(&mut self, decoration: TextDecoration) {
+    pub fn set_text_decoration(&mut self, decoration: elements::TextDecoration) {
         self.current_text_decoration = decoration;
     }
 
     pub fn reset_styles(&mut self) {
-        self.current_text_size = TextSize::default();
-        self.current_text_decoration = TextDecoration::default();
-        self.set_justify_content(Justify::Left);
+        self.current_text_size = elements::TextSize::default();
+        self.current_text_decoration = elements::TextDecoration::default();
+        self.set_justify_content(elements::Justify::Left);
     }
 
-    pub fn print(&self, rows: Option<u32>) -> Result<()> {
+    /// Core printing logic - works with any printer variant.
+    pub fn print_to(&self, printer: &mut AnyPrinter, rows: Option<u32>) -> anyhow::Result<()> {
         if let Some(rows_per_page) = rows {
             // Paginated printing with cuts after each page
             let mut line_count = 0;
-            let mut printer = establish_rongta_printer()?;
             for line in &self.lines {
-                line.justify_content.to_print_command(&mut printer)?;
+                line.justify_content.to_print_command(printer)?;
                 for styled_char in &line.chars {
-                    styled_char.to_print_command(&mut printer)?;
+                    styled_char.to_print_command(printer)?;
                 }
                 printer.feed()?;
                 line_count += 1;
                 if line_count >= rows_per_page {
                     printer.print_cut()?;
-                    // printer = establish_rongta_printer()?; #TODO: if the app continues to work,
-                    // delete this comment
                     line_count = 0;
                 }
             }
@@ -331,11 +337,10 @@ impl PrintBuilder {
             }
         } else {
             // Original behavior
-            let mut printer = establish_rongta_printer()?;
             for line in &self.lines {
-                line.justify_content.to_print_command(&mut printer)?;
+                line.justify_content.to_print_command(printer)?;
                 for styled_char in &line.chars {
-                    styled_char.to_print_command(&mut printer)?;
+                    styled_char.to_print_command(printer)?;
                 }
                 printer.feed()?;
             }
@@ -346,19 +351,24 @@ impl PrintBuilder {
         }
         Ok(())
     }
+
+    /// Print via USB connection.
+    pub fn print(&self, rows: Option<u32>) -> anyhow::Result<()> {
+        let mut printer = establish_usb_printer()?;
+        self.print_to(&mut printer, rows)
+    }
+
+    /// Print via network connection.
+    pub fn network_print(&self, rows: Option<u32>) -> anyhow::Result<()> {
+        let mut printer = establish_network_printer()?;
+        self.print_to(&mut printer, rows)
+    }
 }
 
-pub fn establish_rongta_printer() -> Result<Printer<NetworkDriver>> {
-    // 1) Open network driver
-    let driver = match NetworkDriver::open(IP, PORT, None) {
-        Ok(driver) => Ok(driver),
-        Err(e) => {
-            error!("Error opening network driver: {:?}", e);
-            Err(anyhow!("Failed to open {}:{}", IP, PORT))
-        }
-    }?;
-
-    // 2) Build printer
+fn build_printer<D>(driver: D) -> Result<Printer<D>>
+where
+    D: Driver,
+{
     let mut printer = Printer::new(
         driver,
         Protocol::default(),
@@ -373,4 +383,18 @@ pub fn establish_rongta_printer() -> Result<Printer<NetworkDriver>> {
     printer.reset()?;
 
     Ok(printer)
+}
+
+pub fn establish_network_printer() -> Result<AnyPrinter> {
+    let driver = NetworkDriver::open(IP, PORT, None)
+        .inspect_err(|_| log::error!("Attempted to connect to {}:{}", IP, PORT))
+        .with_context(|| "Failed to open network driver")?;
+    Ok(AnyPrinter::Network(build_printer(driver)?))
+}
+
+pub fn establish_usb_printer() -> Result<AnyPrinter> {
+    let driver = UsbDriver::open(VENDOR_ID, PRODUCT_ID, None, None)
+        .inspect_err(|_| log::error!("Attempted to connect to {}:{}", VENDOR_ID, PRODUCT_ID))
+        .with_context(|| "Failed to open usb driver")?;
+    Ok(AnyPrinter::Usb(build_printer(driver)?))
 }
