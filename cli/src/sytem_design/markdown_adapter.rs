@@ -1,6 +1,9 @@
 use anyhow::Result;
 use comrak::nodes::{AstNode, NodeValue};
-use rongta::{PrintBuilder, TextDecoration, TextSize};
+use rongta::{
+    PrintBuilder,
+    elements::{Justify, TextDecoration, TextSize},
+};
 
 pub struct MarkdownFileAdapter {
     builder: PrintBuilder,
@@ -37,7 +40,7 @@ impl MarkdownFileAdapter {
                     italic: false,
                     underline: true,
                 });
-                self.builder.set_justify_content(rongta::Justify::Center);
+                self.builder.set_justify_content(Justify::Center);
                 self.render_children(node)?;
                 self.builder.new_line();
                 self.builder.new_line();
@@ -116,8 +119,9 @@ impl MarkdownFileAdapter {
                 self.builder.new_line();
                 self.builder.set_text_size(size);
                 self.builder.set_text_decoration(decoration);
-                self.builder.set_justify_content(rongta::Justify::Center);
+                self.builder.set_justify_content(Justify::Center);
                 self.render_children(node)?;
+                self.builder.new_line();
                 self.builder.reset_styles();
                 Ok(())
             }
@@ -196,7 +200,8 @@ impl MarkdownFileAdapter {
             NodeValue::Image(node_link) => {
                 log::trace!("NodeValue::Image triggered");
                 self.builder.new_line();
-                self.builder.set_justify_content(rongta::Justify::Center);
+                self.builder.set_justify_content(Justify::Center);
+
                 self.builder.add_content(&node_link.title)?;
                 self.builder.new_line();
                 self.builder.reset_styles();

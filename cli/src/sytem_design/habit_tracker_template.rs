@@ -1,7 +1,10 @@
 use super::BoxPattern;
 use anyhow::Result;
 use chrono::{DateTime, Datelike, Days, Duration, Months, Utc};
-use rongta::{Justify, PrintBuilder, TextDecoration};
+use rongta::{
+    PrintBuilder,
+    elements::{Justify, TextDecoration, TextSize},
+};
 
 #[derive(clap::ValueEnum, Clone, Copy, Debug, Default)]
 pub enum TimePeriod {
@@ -66,7 +69,7 @@ impl HabitTrackerTemplateBuilder {
             bold: true,
             ..Default::default()
         });
-        self.builder.set_text_size(rongta::TextSize::Medium);
+        self.builder.set_text_size(TextSize::Medium);
         self.builder.add_content(&self.pattern.top)?;
         self.builder.new_line();
         Ok(())
@@ -74,7 +77,7 @@ impl HabitTrackerTemplateBuilder {
 
     fn with_habit(&mut self) -> Result<()> {
         self.builder.set_justify_content(Justify::Center);
-        self.builder.set_text_size(rongta::TextSize::Large);
+        self.builder.set_text_size(TextSize::Large);
         self.builder.add_content(&self.habit.to_ascii_uppercase())?;
         self.builder.new_line();
         Ok(())
@@ -83,7 +86,7 @@ impl HabitTrackerTemplateBuilder {
     fn with_checkmarks(&mut self) -> Result<()> {
         self.builder.set_justify_content(Justify::Center);
         self.builder.set_text_decoration(TextDecoration::default());
-        self.builder.set_text_size(rongta::TextSize::Medium);
+        self.builder.set_text_size(TextSize::Medium);
 
         const SEGMENTS_PER_LINE: usize = 4; // Max segments that fit in 48 chars with spacing
 
@@ -119,7 +122,7 @@ impl HabitTrackerTemplateBuilder {
 
     fn with_bottom(&mut self) -> Result<()> {
         self.builder.set_justify_content(Justify::Left);
-        self.builder.set_text_size(rongta::TextSize::Medium);
+        self.builder.set_text_size(TextSize::Medium);
         self.builder.add_content(&self.pattern.bottom)?;
         self.builder.new_line();
         Ok(())
