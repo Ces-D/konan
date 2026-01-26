@@ -1,0 +1,100 @@
+@import 'tailwindcss';
+
+:root {
+	--bg-color: #ffffff;
+	--bg-color-inverted: #37332f;
+	--text-color: #37332f;
+	--text-color-inverted: #ffffff;
+
+	--color-primary-900: #f78137;
+	--color-primary-300: #fdd9c3;
+}
+
+html[data-theme='dark'] {
+	--bg-color: #37332f;
+	--bg-color-inverted: #ffffff;
+	--text-color: #ffffff;
+}
+
+@theme {
+	/* Font Family */
+	--font-lato: 'Lato', sans-serif;
+
+	/* Colors */
+	--color-*: initial;
+
+	/* Font Size */
+	--text-*: initial;
+	--text-sm: clamp(0.875rem, 0.84rem + 0.2vw, 1rem); /* ~14px to 16px */
+	--text-md: clamp(1rem, 0.95rem + 0.25vw, 1.125rem); /* ~16px to 18px */
+	--text-lg: clamp(1.125rem, 1.05rem + 0.3vw, 1.25rem); /* ~18px to 20px */
+	--text-xl: clamp(1.25rem, 1.15rem + 0.4vw, 1.5rem); /* ~20px to 24px */
+	--text-2xl: clamp(1.5rem, 1.35rem + 0.6vw, 2rem); /* ~24px to 32px */
+
+	/* Screen Size */
+	--breakpoint-*: initial;
+	--breakpoint-phone: 24rem;
+	--breakpoint-tablet: 40rem;
+	--breakpoint-laptop: 64rem;
+	--breakpoint-desktop: 80rem;
+}
+
+@theme inline {
+	/* Colors */
+	--color-text: var(--text-color);
+	--color-text-inverted: var(--text-color-inverted);
+	--color-background: var(--bg-color);
+	--color-background-inverted: var(--bg-color-inverted);
+
+	--color-primary-900: var(--color-primary-900);
+	--color-primary-300: var(--color-primary-300);
+}
+
+@layer base {
+	code,
+	input,
+	textarea,
+	p {
+		font-size: var(--text-md);
+		font-weight: var(--font-weight-normal);
+	}
+	h1 {
+		font-size: var(--text-2xl);
+		font-weight: var(--font-weight-bold);
+	}
+	h2 {
+		font-size: var(--text-2xl);
+		font-weight: var(--font-weight-normal);
+	}
+	h3 {
+		font-size: var(--text-xl);
+		font-weight: var(--font-weight-normal);
+	}
+	h4 {
+		font-size: var(--text-lg);
+		font-weight: var(--font-weight-bold);
+	}
+	h5 {
+		font-size: var(--text-lg);
+		font-weight: var(--font-weight-thin);
+	}
+
+	div,
+	input,
+	button,
+	p,
+	h1,
+	h2,
+	h3,
+	h4,
+	h5 {
+		font-family: var(--font-lato);
+		color: var(--text-color);
+	}
+
+	* {
+		transition:
+			color 0.3s linear,
+			background-color 0.3s linear;
+	}
+}
