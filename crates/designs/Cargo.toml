@@ -1,0 +1,16 @@
+[package]
+name = "designs"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+
+[lib]
+path = "designs.rs"
+
+[dependencies]
+anyhow.workspace = true
+log.workspace = true
+rand.workspace = true
+comrak.workspace = true
+rongta.workspace = true
+chrono.workspace = true

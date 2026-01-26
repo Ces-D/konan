@@ -1,0 +1,75 @@
+use anyhow::bail;
+use clap::Parser;
+use log::{info, trace};
+use rongta::elements::{Justify, TextDecoration};
+use std::{
+    ffi::OsStr,
+    fs::File,
+    io::{self, BufRead, BufReader},
+    path::Path,
+};
+
+use designs::markdown_adapter::MarkdownFileAdapter;
+
+/// Reads a file line by line from a given path using an iterator.
+/// This is memory-efficient as it doesn't load the whole file into memory.
+/// Returns an iterator over the lines of the file.
+pub fn read_file_lines<P: AsRef<Path>>(path: P) -> io::Result<io::Lines<BufReader<File>>> {
+    trace!("Reading file lines");
+    let input_path = path.as_ref();
+    let abs_path = if input_path.is_absolute() {
+        input_path.to_path_buf()
+    } else {
+        std::env::current_dir()?.join(input_path)
+    };
+    let file = File::open(abs_path)?;
+    Ok(BufReader::new(file).lines())
+}
+
+#[derive(Debug, Parser)]
+pub struct FileArgs {
+    #[clap(help = "The file path")]
+    path: std::path::PathBuf,
+    #[clap(short, long, help = "Number of rows per page (cuts after each page)")]
+    rows: Option<u32>,
+}
+
+pub async fn handle_file_command(args: FileArgs, cut: bool) -> anyhow::Result<()> {
+    if !args.path.exists() {
+        bail!("Path does not exist: {}", args.path.display());
+    }
+    if !args.path.is_file() {
+        bail!("Path is not a file: {}", args.path.display());
+    }
+
+    let extension = args.path.extension().unwrap_or_else(|| OsStr::new("txt"));
+    let pagination = args.rows;
+
+    if extension == "md" {
+        // Markdown rendering path
+        info!("Rendering markdown file with formatting");
+        let content = std::fs::read_to_string(&args.path)?;
+        let builder = rongta::PrintBuilder::new(cut);
+        let mut renderer = MarkdownFileAdapter::new(builder);
+        renderer.print(&content, pagination)?;
+    } else {
+        // Plain text rendering path (existing logic)
+        let mut builder = rongta::PrintBuilder::new(cut);
+        let file_content = read_file_lines(&args.path)?;
+
+        for line in file_content {
+            let line = line?;
+            trace!("Reading line: {}", line);
+            builder.set_justify_content(Justify::Left);
+            builder.set_text_decoration(TextDecoration {
+                bold: true,
+                ..Default::default()
+            });
+            builder.add_content(&line)?;
+            builder.new_line();
+        }
+        builder.print(pagination)?;
+    }
+
+    Ok(())
+}

@@ -1,0 +1,10 @@
+[package]
+name = "tiptap"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+
+[lib]
+path = "tiptap.rs"
+
+[dependencies]

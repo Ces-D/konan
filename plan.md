@@ -1,0 +1,1 @@
+Goal -> Use a raspberry pi as a usb connection for a receipt printer. Commands will be routed through the pi to then be printed out. As a user I want to be able to call a dedicated web endpoint and have the commands be routed for printing. I want to be able to schedule certain items to be printed, but I believe that logic should exist on a server 

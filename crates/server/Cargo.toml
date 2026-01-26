@@ -1,0 +1,17 @@
+[package]
+name = "server"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+actix-cors.workspace = true
+actix-web.workspace = true
+env_logger.workspace = true
+log.workspace = true
+serde.workspace = true
+chrono.workspace = true
+
+designs.workspace = true
+rongta.workspace = true
