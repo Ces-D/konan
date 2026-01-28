@@ -14,6 +14,8 @@
 	import PrinterIcon from '../../Icons/Printer.svelte';
 	import ToolBar from './ToolBar.svelte';
 	import SubmitButton from '../SubmitButton.svelte';
+	import { EditorMessage } from '$lib/editor';
+	import { toastError, toastSuccess } from '$lib';
 
 	const { storedContent }: { storedContent?: PrintHistoryEntry } = $props();
 	let elementRef: HTMLElement;
@@ -65,13 +67,20 @@
 	) {
 		event.preventDefault();
 		const json = editorState.editor?.getJSON();
-		if (!json) return;
-
+		if (!json) {
+			toastError('No content in editor found');
+			return;
+		}
 		const store = new PrintHistoryStore(json, storedContent?.id);
 		const entry = await store.save();
-
-		// Navigate to the session page
-		goto(`/?id=${encodeURIComponent(entry.id)}`);
+		const editorMessage = new EditorMessage(json);
+		const res = await editorMessage.printEditorMessage();
+		if (res.success) {
+			toastSuccess(res.message);
+			goto(`/?id=${encodeURIComponent(entry.id)}`);
+		} else {
+			toastError(res.message);
+		}
 	}
 </script>
 
@@ -84,9 +93,7 @@
 	<!-- Footer hint -->
 	<div class="editor-footer">
 		<span class="font-semibold">Max {CPL} characters per line</span>
-		<div class="footer-hints">
-			Ctrl+B Bold | Ctrl+I Italic | Enter New line
-		</div>
+		<div class="footer-hints">Ctrl+B Bold | Enter New line</div>
 	</div>
 	<div class="flex gap-10">
 		<SubmitButton
@@ -122,24 +129,18 @@
 
 	/* Headings from StarterKit (levels 1-6) */
 	.editor-content :global(.tiptap h1) {
-		@apply text-[42px] font-bold;
+		@apply text-[42px] leading-12 font-bold;
 	}
 
 	.editor-content :global(.tiptap h2) {
-		@apply text-[32px] font-bold;
+		@apply text-[32px] leading-9 font-bold;
 	}
 
 	.editor-content :global(.tiptap h3) {
-		@apply text-[32px];
+		@apply text-[32px] leading-9;
 	}
 	.editor-content :global(.tiptap h4) {
-		@apply text-[16px] font-bold;
-	}
-	.editor-content :global(.tiptap h5) {
-		@apply text-[14px] font-semibold;
-	}
-	.editor-content :global(.tiptap h6) {
-		@apply text-[12px] font-semibold tracking-wide uppercase;
+		@apply text-[16px] leading-4 font-bold;
 	}
 
 	.editor-content :global(.tiptap ul),

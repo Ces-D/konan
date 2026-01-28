@@ -12,5 +12,10 @@ anyhow.workspace = true
 log.workspace = true
 rand.workspace = true
 comrak.workspace = true
-rongta.workspace = true
 chrono.workspace = true
+
+tiptap.workspace = true
+rongta.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true

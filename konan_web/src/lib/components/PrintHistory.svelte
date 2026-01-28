@@ -8,6 +8,9 @@
 	import { generateText } from '@tiptap/core';
 	import { StarterKit } from '@tiptap/starter-kit';
 	import DeleteIcon from './Icons/Delete.svelte';
+	import TextAlign from '@tiptap/extension-text-align';
+	import TaskList from '@tiptap/extension-task-list';
+	import TaskItem from '@tiptap/extension-task-item';
 
 	let printHistory = $state<PrintHistoryEntry[]>([]);
 
@@ -21,7 +24,15 @@
 	});
 
 	function getPreviewText(entry: PrintHistoryEntry): string {
-		return generateText(entry.content, [StarterKit]);
+		return generateText(entry.content, [
+			StarterKit,
+			TextAlign.configure({
+				types: ['heading', 'paragraph'],
+				alignments: ['left', 'center', 'right']
+			}),
+			TaskList,
+			TaskItem.configure({ nested: true })
+		]);
 	}
 
 	async function deletHistoryItem(item: PrintHistoryEntry) {
@@ -40,7 +51,7 @@
 			{#each printHistory as item}
 				<li class="py-1 my-1 border-b border-background-inverted">
 					<a
-						class="grid items-start p-1 text-left rounded cursor-pointer line-clamp-4 grid-cols-[1fr_auto] hover:bg-primary-300"
+						class="grid items-start p-1 text-left rounded cursor-pointer grid-cols-[1fr_auto] hover:bg-primary-300"
 						href={`/?id=${encodeURIComponent(item.id)}`}
 					>
 						<span class="text-sm opacity-70"
@@ -56,7 +67,9 @@
 								deletHistoryItem(item);
 							}}><DeleteIcon /></button
 						>
-						<p class="col-span-2">
+						<p
+							class="col-span-2 line-clamp-4"
+						>
 							{getPreviewText(item)}
 						</p>
 					</a>
