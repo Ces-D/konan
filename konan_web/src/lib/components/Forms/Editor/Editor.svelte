@@ -1,26 +1,26 @@
 <script lang="ts">
-	import { applyAction, deserialize } from '$app/forms';
 	import { onMount, onDestroy } from 'svelte';
-	import { Editor } from '@tiptap/core';
+	import { Editor, type JSONContent } from '@tiptap/core';
 	import TextAlign from '@tiptap/extension-text-align';
 	import TaskList from '@tiptap/extension-task-list';
 	import TaskItem from '@tiptap/extension-task-item';
 	import { StarterKit } from '@tiptap/starter-kit';
-	import type { ActionResult } from '@sveltejs/kit';
-	import { invalidateAll } from '$app/navigation';
-	import { CPL, type EditorContent } from '$lib/printHistory';
-	import PrinterIcon from '../Icons/Printer.svelte';
+	import { goto } from '$app/navigation';
+	import {
+		CPL,
+		PrintHistoryStore,
+		type PrintHistoryEntry
+	} from '$lib/printHistory';
+	import PrinterIcon from '../../Icons/Printer.svelte';
 	import ToolBar from './ToolBar.svelte';
+	import SubmitButton from '../SubmitButton.svelte';
 
-	const {
-		storedContent,
-		children
-	}: { storedContent?: Partial<EditorContent>; children: any } = $props();
+	const { storedContent }: { storedContent?: PrintHistoryEntry } = $props();
 	let elementRef: HTMLElement;
 	let editorState = $state<{ editor: Editor | null }>({ editor: null });
 	let lastContentId: string | undefined = storedContent?.id;
 
-	function initEditor(content?: string) {
+	function initEditor(content?: JSONContent) {
 		editorState.editor = new Editor({
 			injectCSS: false,
 			element: elementRef,
@@ -41,7 +41,7 @@
 	}
 
 	onMount(() => {
-		initEditor(storedContent?.text);
+		initEditor(storedContent?.content);
 	});
 
 	onDestroy(() => {
@@ -57,41 +57,26 @@
 		if (editorState.editor) {
 			editorState.editor.destroy();
 		}
-		initEditor(storedContent?.text);
+		initEditor(storedContent?.content);
 	});
 
 	async function handleSubmit(
 		event: SubmitEvent & { currentTarget: EventTarget & HTMLFormElement }
 	) {
 		event.preventDefault();
-		const data = new FormData();
-		if (storedContent?.id) {
-			data.set('id', storedContent?.id);
-		}
-		data.set('text', JSON.stringify(editorState.editor?.getJSON()) ?? '');
+		const json = editorState.editor?.getJSON();
+		if (!json) return;
 
-		const response = await fetch(event.currentTarget.action, {
-			method: 'POST',
-			body: data
-		});
+		const store = new PrintHistoryStore(json, storedContent?.id);
+		const entry = await store.save();
 
-		const result: ActionResult = deserialize(await response.text());
-
-		if (result.type === 'success') {
-			// rerun all `load` functions, following the successful update
-			await invalidateAll();
-		}
-
-		applyAction(result);
+		// Navigate to the session page
+		goto(`/?id=${encodeURIComponent(entry.id)}`);
 	}
 </script>
 
-<form
-	method="POST"
-	class="overflow-hidden"
-	onsubmit={handleSubmit}
-	action="?/json"
->
+<form class="overflow-hidden w-full" onsubmit={handleSubmit}>
+	<h1>Message</h1>
 	<ToolBar editor={editorState.editor} />
 	<!-- Editor area -->
 	<article class="editor-content" bind:this={elementRef}></article>
@@ -103,23 +88,29 @@
 			Ctrl+B Bold | Ctrl+I Italic | Enter New line
 		</div>
 	</div>
-	<button
-		class="print-button"
-		type="submit"
-		disabled={!editorState.editor || editorState.editor.isEmpty}
-	>
-		<PrinterIcon />
-		Print
-	</button>
+	<div class="flex gap-10">
+		<SubmitButton
+			disabled={!editorState.editor || editorState.editor.isEmpty}
+		>
+			<PrinterIcon />
+			Print Message
+		</SubmitButton>
+		<button
+			type="button"
+			class="clear-button"
+			onclick={() => goto('/')}
+			disabled={!editorState.editor || editorState.editor.isEmpty}
+		>
+			Clear
+		</button>
+	</div>
 </form>
 
-{@render children()}
-
 <style lang="postcss">
-	@reference "../../../routes/layout.css";
+	@reference "../../../../routes/layout.css";
 
 	.editor-content {
-		@apply mx-auto my-4 h-96 w-[482px] overflow-x-hidden overflow-y-scroll rounded-md border-2 border-primary-900 p-2 shadow;
+		@apply mx-auto my-4 h-96 overflow-x-hidden overflow-y-scroll rounded-md border-2 border-primary-900 p-2 shadow tablet:w-[482px];
 	}
 	.editor-content :global(.tiptap) {
 		@apply h-full text-[16px] leading-6 wrap-break-word whitespace-normal outline-none;
@@ -213,15 +204,13 @@
 		@apply flex flex-col gap-1 opacity-70;
 	}
 
-	.print-button {
-		@apply my-4 flex items-center gap-2 rounded-md bg-primary-900 px-4 py-2 text-text-inverted;
+	.clear-button {
+		@apply my-4 flex cursor-pointer items-center gap-2 rounded-md px-4 py-2;
 	}
-
-	.print-button:hover:not(:disabled) {
-		@apply opacity-90;
+	.clear-button:hover:not(:disabled) {
+		@apply bg-primary-300 opacity-90;
 	}
-
-	.print-button:disabled {
+	.clear-button:disabled {
 		@apply cursor-not-allowed opacity-50;
 	}
 </style>

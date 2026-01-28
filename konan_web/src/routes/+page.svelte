@@ -1,31 +1,36 @@
 <script lang="ts">
-	import { enhance } from '$app/forms';
-	import Editor from '$lib/components/Editor/Editor.svelte';
-	import OutlineFormAction from '$lib/components/Editor/OutlineFormAction.svelte';
-	import HabitTrackerFormAction from '$lib/components/Editor/HabitTrackerFormAction.svelte';
-	import PrintHistory from '$lib/components/PrintHistory.svelte';
-	import { Confetti } from 'svelte-confetti';
-	import type { PageProps } from './$types';
-	import { toast } from '@zerodevx/svelte-toast';
-	const { data, form }: PageProps = $props();
+	import { page } from '$app/state';
+	import Editor from '$lib/components/Forms/Editor/Editor.svelte';
+	import OutlineForm from '$lib/components/Forms/OutlineForm.svelte';
+	import HabitTrackerForm from '$lib/components/Forms/HabitTrackerForm.svelte';
+	import {
+		PrintHistoryStore,
+		type PrintHistoryEntry
+	} from '$lib/printHistory';
+
+	let storedContent = $state<PrintHistoryEntry | undefined>(undefined);
+	let lastSessionId: string | null = null;
+
 	$effect(() => {
-		if (form?.success) {
-			toast.push(form.message);
+		const sessionId = page.url.searchParams.get('id');
+		if (sessionId === lastSessionId) return;
+		lastSessionId = sessionId;
+
+		if (!sessionId) {
+			storedContent = undefined;
+			return;
 		}
+
+		PrintHistoryStore.getById(sessionId).then((entry) => {
+			storedContent = entry;
+		});
 	});
 </script>
 
-<main class="grid grid-rows-1 gap-x-3 h-full grid-cols-[auto_1fr]">
-	<PrintHistory printHistory={data.userHistory} />
-	<section class="flex justify-center items-start mt-20 w-full">
-		<section>
-			<Editor>
-				<OutlineFormAction />
-				<HabitTrackerFormAction />
-			</Editor>
-		</section>
-	</section>
-	{#if form?.success}
-		<Confetti size={300} duration={500} destroyOnComplete />
-	{/if}
-</main>
+<section
+	class="flex flex-col gap-20 justify-start items-center mx-auto mt-5 w-full tablet:mt-20 tablet:w-11/12 laptop:w-3/4"
+>
+	<Editor {storedContent} />
+	<OutlineForm />
+	<HabitTrackerForm />
+</section>

@@ -16,7 +16,7 @@
 </button>
 
 <style lang="postcss">
-	@reference "../../../routes/layout.css";
+	@reference "../../../../routes/layout.css";
 
 	.active {
 		@apply bg-background-inverted text-text-inverted;
