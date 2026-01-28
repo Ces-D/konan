@@ -8,3 +8,5 @@ authors.workspace = true
 path = "tiptap.rs"
 
 [dependencies]
+serde.workspace = true
+serde_json.workspace = true
