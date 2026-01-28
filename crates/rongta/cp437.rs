@@ -98,3 +98,252 @@ pub fn cp437_char_only(ch: char) -> Result<char> {
         bail!("Non-CP437 character: '{}'", ch)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    mod normalize_char {
+        use super::*;
+
+        #[test]
+        fn normalizes_left_single_quote() {
+            assert_eq!(normalize_char('\u{2018}'), Some('\''));
+        }
+
+        #[test]
+        fn normalizes_right_single_quote() {
+            assert_eq!(normalize_char('\u{2019}'), Some('\''));
+        }
+
+        #[test]
+        fn normalizes_modifier_letter_apostrophe() {
+            assert_eq!(normalize_char('\u{02BC}'), Some('\''));
+        }
+
+        #[test]
+        fn normalizes_left_double_quote() {
+            assert_eq!(normalize_char('\u{201C}'), Some('"'));
+        }
+
+        #[test]
+        fn normalizes_right_double_quote() {
+            assert_eq!(normalize_char('\u{201D}'), Some('"'));
+        }
+
+        #[test]
+        fn normalizes_en_dash() {
+            assert_eq!(normalize_char('\u{2013}'), Some('-'));
+        }
+
+        #[test]
+        fn normalizes_em_dash() {
+            assert_eq!(normalize_char('\u{2014}'), Some('-'));
+        }
+
+        #[test]
+        fn returns_none_for_regular_ascii() {
+            assert_eq!(normalize_char('a'), None);
+            assert_eq!(normalize_char('Z'), None);
+            assert_eq!(normalize_char('5'), None);
+            assert_eq!(normalize_char('-'), None);
+            assert_eq!(normalize_char('\''), None);
+        }
+
+        #[test]
+        fn returns_none_for_cp437_extended() {
+            assert_eq!(normalize_char('é'), None);
+            assert_eq!(normalize_char('║'), None);
+        }
+    }
+
+    mod normalize_to_ascii {
+        use super::*;
+
+        #[test]
+        fn returns_borrowed_when_no_normalization_needed() {
+            let input = "Hello, World!";
+            let result = normalize_to_ascii(input);
+            assert!(matches!(result, Cow::Borrowed(_)));
+            assert_eq!(result, "Hello, World!");
+        }
+
+        #[test]
+        fn normalizes_curly_quotes_in_string() {
+            // "Hello," she said, 'it's great!'
+            let input = "\u{201C}Hello,\u{201D} she said, \u{2018}it\u{2019}s great!\u{2019}";
+            let result = normalize_to_ascii(input);
+            assert!(matches!(result, Cow::Owned(_)));
+            assert_eq!(result, "\"Hello,\" she said, 'it's great!'");
+        }
+
+        #[test]
+        fn normalizes_dashes() {
+            // 2020–2024 — a long time (en-dash and em-dash)
+            let input = "2020\u{2013}2024 \u{2014} a long time";
+            let result = normalize_to_ascii(input);
+            assert_eq!(result, "2020-2024 - a long time");
+        }
+
+        #[test]
+        fn expands_ellipsis_to_three_periods() {
+            // Wait for it…
+            let input = "Wait for it\u{2026}";
+            let result = normalize_to_ascii(input);
+            assert_eq!(result, "Wait for it...");
+        }
+
+        #[test]
+        fn handles_multiple_ellipses() {
+            // One… two… three…
+            let input = "One\u{2026} two\u{2026} three\u{2026}";
+            let result = normalize_to_ascii(input);
+            assert_eq!(result, "One... two... three...");
+        }
+
+        #[test]
+        fn handles_mixed_normalizations() {
+            // "It's… complicated," he said—really!
+            let input = "\u{201C}It\u{2019}s\u{2026} complicated,\u{201D} he said\u{2014}really!";
+            let result = normalize_to_ascii(input);
+            assert_eq!(result, "\"It's... complicated,\" he said-really!");
+        }
+
+        #[test]
+        fn empty_string_returns_borrowed() {
+            let result = normalize_to_ascii("");
+            assert!(matches!(result, Cow::Borrowed(_)));
+            assert_eq!(result, "");
+        }
+
+        #[test]
+        fn preserves_cp437_extended_characters() {
+            let input = "Price: £50 ± 10%";
+            let result = normalize_to_ascii(input);
+            assert!(matches!(result, Cow::Borrowed(_)));
+            assert_eq!(result, "Price: £50 ± 10%");
+        }
+    }
+
+    mod cp437_char_only {
+        use super::*;
+
+        #[test]
+        fn accepts_ascii_letters() {
+            assert!(cp437_char_only('a').is_ok());
+            assert!(cp437_char_only('Z').is_ok());
+        }
+
+        #[test]
+        fn accepts_ascii_digits() {
+            assert!(cp437_char_only('0').is_ok());
+            assert!(cp437_char_only('9').is_ok());
+        }
+
+        #[test]
+        fn accepts_ascii_punctuation() {
+            assert!(cp437_char_only('.').is_ok());
+            assert!(cp437_char_only('!').is_ok());
+            assert!(cp437_char_only('@').is_ok());
+        }
+
+        #[test]
+        fn accepts_space_and_newline() {
+            assert!(cp437_char_only(' ').is_ok());
+            assert!(cp437_char_only('\n').is_ok());
+            assert!(cp437_char_only('\t').is_ok());
+        }
+
+        #[test]
+        fn accepts_cp437_accented_characters() {
+            assert!(cp437_char_only('é').is_ok());
+            assert!(cp437_char_only('ü').is_ok());
+            assert!(cp437_char_only('ñ').is_ok());
+            assert!(cp437_char_only('Ç').is_ok());
+        }
+
+        #[test]
+        fn accepts_cp437_box_drawing() {
+            assert!(cp437_char_only('│').is_ok());
+            assert!(cp437_char_only('─').is_ok());
+            assert!(cp437_char_only('┌').is_ok());
+            assert!(cp437_char_only('╔').is_ok());
+            assert!(cp437_char_only('║').is_ok());
+        }
+
+        #[test]
+        fn accepts_cp437_math_symbols() {
+            assert!(cp437_char_only('±').is_ok());
+            assert!(cp437_char_only('≥').is_ok());
+            assert!(cp437_char_only('≤').is_ok());
+            assert!(cp437_char_only('∞').is_ok());
+            assert!(cp437_char_only('√').is_ok());
+        }
+
+        #[test]
+        fn accepts_cp437_currency_symbols() {
+            assert!(cp437_char_only('¢').is_ok());
+            assert!(cp437_char_only('£').is_ok());
+            assert!(cp437_char_only('¥').is_ok());
+        }
+
+        #[test]
+        fn accepts_cp437_greek_letters() {
+            // CP437 includes: α, Γ, π, Σ, σ, µ, τ, Φ, Θ, Ω, δ, φ, ε
+            // Note: ß (German sharp S) looks like β but is different
+            assert!(cp437_char_only('α').is_ok());
+            assert!(cp437_char_only('Γ').is_ok());
+            assert!(cp437_char_only('π').is_ok());
+            assert!(cp437_char_only('Σ').is_ok());
+            assert!(cp437_char_only('Ω').is_ok());
+            assert!(cp437_char_only('δ').is_ok());
+        }
+
+        #[test]
+        fn rejects_emoji() {
+            assert!(cp437_char_only('😀').is_err());
+            assert!(cp437_char_only('🎉').is_err());
+        }
+
+        #[test]
+        fn rejects_cjk_characters() {
+            assert!(cp437_char_only('中').is_err());
+            assert!(cp437_char_only('日').is_err());
+        }
+
+        #[test]
+        fn rejects_curly_quotes() {
+            assert!(cp437_char_only('\u{2019}').is_err()); // right single quote
+            assert!(cp437_char_only('\u{201C}').is_err()); // left double quote
+        }
+
+        #[test]
+        fn rejects_special_unicode() {
+            assert!(cp437_char_only('\u{2192}').is_err()); // right arrow →
+            assert!(cp437_char_only('\u{2022}').is_err()); // bullet point • (different from CP437's ∙)
+        }
+    }
+
+    mod is_cp437_char {
+        use super::*;
+
+        #[test]
+        fn all_cp437_chars_are_valid() {
+            for ch in CP437_CHARS {
+                assert!(
+                    is_cp437_char(ch),
+                    "CP437 character '{}' should be valid",
+                    ch
+                );
+            }
+        }
+
+        #[test]
+        fn all_printable_ascii_are_valid() {
+            for code in 0x20u8..=0x7E {
+                let ch = code as char;
+                assert!(is_cp437_char(ch), "ASCII '{}' should be valid", ch);
+            }
+        }
+    }
+}

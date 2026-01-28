@@ -398,3 +398,404 @@ pub fn establish_usb_printer() -> Result<AnyPrinter> {
         .with_context(|| "Failed to open usb driver")?;
     Ok(AnyPrinter::Usb(build_printer(driver)?))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use elements::{FormatState, Justify, StyledChar, TextDecoration, TextSize};
+
+    fn styled_char(ch: char) -> StyledChar {
+        StyledChar {
+            ch,
+            state: FormatState::default(),
+        }
+    }
+
+    fn styled_char_large(ch: char) -> StyledChar {
+        StyledChar {
+            ch,
+            state: FormatState {
+                text_size: TextSize::Large,
+                text_decoration: TextDecoration::default(),
+            },
+        }
+    }
+
+    fn styled_char_extra_large(ch: char) -> StyledChar {
+        StyledChar {
+            ch,
+            state: FormatState {
+                text_size: TextSize::ExtraLarge,
+                text_decoration: TextDecoration::default(),
+            },
+        }
+    }
+
+    mod line {
+        use super::*;
+
+        mod visual_width {
+            use super::*;
+
+            #[test]
+            fn empty_line_has_zero_width() {
+                let line = Line::default();
+                assert_eq!(line.visual_width(), 0);
+            }
+
+            #[test]
+            fn medium_chars_count_as_one() {
+                let mut line = Line::default();
+                line.chars.push(styled_char('a'));
+                line.chars.push(styled_char('b'));
+                line.chars.push(styled_char('c'));
+                assert_eq!(line.visual_width(), 3);
+            }
+
+            #[test]
+            fn large_chars_count_as_two() {
+                let mut line = Line::default();
+                line.chars.push(styled_char_large('a'));
+                line.chars.push(styled_char_large('b'));
+                assert_eq!(line.visual_width(), 4);
+            }
+
+            #[test]
+            fn extra_large_chars_count_as_three() {
+                let mut line = Line::default();
+                line.chars.push(styled_char_extra_large('a'));
+                line.chars.push(styled_char_extra_large('b'));
+                assert_eq!(line.visual_width(), 6);
+            }
+
+            #[test]
+            fn mixed_sizes_sum_correctly() {
+                let mut line = Line::default();
+                line.chars.push(styled_char('a')); // 1
+                line.chars.push(styled_char_large('b')); // 2
+                line.chars.push(styled_char_extra_large('c')); // 3
+                assert_eq!(line.visual_width(), 6);
+            }
+        }
+
+        mod find_wrap_point {
+            use super::*;
+
+            #[test]
+            fn returns_none_when_line_fits() {
+                let mut line = Line::default();
+                for ch in "Hello World".chars() {
+                    line.chars.push(styled_char(ch));
+                }
+                assert!(line.find_wrap_point().is_none());
+            }
+
+            #[test]
+            fn finds_last_whitespace_before_cpl() {
+                let mut line = Line::default();
+                // Create a line exactly at CPL with a space in the middle
+                // "Hello World" repeated to exceed CPL (48)
+                let text = "Hello World Hello World Hello World Hello World X";
+                for ch in text.chars() {
+                    line.chars.push(styled_char(ch));
+                }
+                // Should find a wrap point at one of the spaces
+                let wrap = line.find_wrap_point();
+                assert!(wrap.is_some());
+                // Wrap point should be at a space
+                let idx = wrap.unwrap();
+                assert!(line.chars[idx].ch.is_whitespace());
+            }
+
+            #[test]
+            fn returns_none_for_no_whitespace_in_short_line() {
+                let mut line = Line::default();
+                for ch in "NoSpaces".chars() {
+                    line.chars.push(styled_char(ch));
+                }
+                assert!(line.find_wrap_point().is_none());
+            }
+        }
+
+        mod add_char {
+            use super::*;
+
+            #[test]
+            fn returns_none_when_line_not_full() {
+                let mut line = Line::default();
+                let result = line.add_char(styled_char('a'));
+                assert!(result.is_none());
+                assert_eq!(line.chars.len(), 1);
+            }
+
+            #[test]
+            fn returns_none_until_cpl_exceeded() {
+                let mut line = Line::default();
+                for _ in 0..CPL {
+                    let result = line.add_char(styled_char('a'));
+                    assert!(result.is_none());
+                }
+                assert_eq!(line.visual_width(), CPL as usize);
+            }
+
+            #[test]
+            fn returns_new_line_when_cpl_exceeded() {
+                let mut line = Line::default();
+                // Fill exactly to CPL
+                for _ in 0..CPL {
+                    line.add_char(styled_char('a'));
+                }
+                // Adding one more should trigger wrap
+                let result = line.add_char(styled_char('b'));
+                assert!(result.is_some());
+            }
+
+            #[test]
+            fn soft_wraps_at_whitespace() {
+                let mut line = Line::default();
+                // Add "word " pattern that will exceed CPL
+                let text = "word word word word word word word word word word!";
+                for ch in text.chars() {
+                    if let Some(new_line) = line.add_char(styled_char(ch)) {
+                        // The new line should start with "word" (after space removed)
+                        assert!(
+                            !new_line.chars.is_empty(),
+                            "New line should have content"
+                        );
+                        // The original line should end without trailing space
+                        if let Some(last) = line.chars.last() {
+                            // After wrap, the space should be removed
+                            assert!(
+                                !last.ch.is_whitespace() || line.visual_width() <= CPL as usize,
+                                "Line should wrap properly"
+                            );
+                        }
+                        break;
+                    }
+                }
+            }
+
+            #[test]
+            fn hard_wraps_when_no_whitespace() {
+                let mut line = Line::default();
+                // Add a string with no whitespace that exceeds CPL
+                for _ in 0..=CPL {
+                    line.add_char(styled_char('x'));
+                }
+                // The line should have wrapped
+                assert!(
+                    line.visual_width() <= CPL as usize,
+                    "Line should be within CPL after hard wrap"
+                );
+            }
+
+            #[test]
+            fn preserves_justify_content_on_wrap() {
+                let mut line = Line {
+                    justify_content: Justify::Center,
+                    ..Default::default()
+                };
+                // Fill beyond CPL
+                for _ in 0..=CPL {
+                    if let Some(new_line) = line.add_char(styled_char('a')) {
+                        assert_eq!(
+                            new_line.justify_content,
+                            Justify::Center,
+                            "Wrapped line should preserve justify_content"
+                        );
+                        return;
+                    }
+                }
+                panic!("Expected line to wrap");
+            }
+
+            #[test]
+            fn large_chars_trigger_earlier_wrap() {
+                let mut line = Line::default();
+                // Large chars take 2 columns, so we need CPL/2 chars
+                let chars_needed = (CPL as usize / 2) + 1;
+                let mut wrapped = false;
+                for _ in 0..chars_needed {
+                    if line.add_char(styled_char_large('W')).is_some() {
+                        wrapped = true;
+                        break;
+                    }
+                }
+                assert!(wrapped, "Large chars should wrap earlier");
+            }
+        }
+    }
+
+    mod print_builder {
+        use super::*;
+
+        #[test]
+        fn new_creates_empty_builder() {
+            let builder = PrintBuilder::new(true);
+            assert!(builder.lines.is_empty());
+        }
+
+        #[test]
+        fn new_sets_cut_flag() {
+            let builder = PrintBuilder::new(true);
+            assert!(builder.cut);
+
+            let builder = PrintBuilder::new(false);
+            assert!(!builder.cut);
+        }
+
+        #[test]
+        fn add_content_creates_line() {
+            let mut builder = PrintBuilder::new(false);
+            builder.add_content("Hello").unwrap();
+            assert_eq!(builder.lines.len(), 1);
+        }
+
+        #[test]
+        fn add_content_adds_chars() {
+            let mut builder = PrintBuilder::new(false);
+            builder.add_content("Hi").unwrap();
+            assert_eq!(builder.lines[0].chars.len(), 2);
+            assert_eq!(builder.lines[0].chars[0].ch, 'H');
+            assert_eq!(builder.lines[0].chars[1].ch, 'i');
+        }
+
+        #[test]
+        fn new_line_adds_empty_line() {
+            let mut builder = PrintBuilder::new(false);
+            builder.add_content("First").unwrap();
+            builder.new_line();
+            builder.add_content("Second").unwrap();
+            assert_eq!(builder.lines.len(), 2);
+        }
+
+        #[test]
+        fn set_justify_content_affects_current_line() {
+            let mut builder = PrintBuilder::new(false);
+            builder.add_content("Text").unwrap();
+            builder.set_justify_content(Justify::Center);
+            assert_eq!(builder.lines[0].justify_content, Justify::Center);
+        }
+
+        #[test]
+        fn set_justify_content_creates_line_if_empty() {
+            let mut builder = PrintBuilder::new(false);
+            builder.set_justify_content(Justify::Right);
+            assert_eq!(builder.lines.len(), 1);
+            assert_eq!(builder.lines[0].justify_content, Justify::Right);
+        }
+
+        #[test]
+        fn set_text_size_affects_subsequent_content() {
+            let mut builder = PrintBuilder::new(false);
+            builder.set_text_size(TextSize::Large);
+            builder.add_content("Big").unwrap();
+            assert_eq!(
+                builder.lines[0].chars[0].state.text_size,
+                TextSize::Large
+            );
+        }
+
+        #[test]
+        fn set_text_decoration_affects_subsequent_content() {
+            let mut builder = PrintBuilder::new(false);
+            builder.set_text_decoration(TextDecoration {
+                bold: true,
+                underline: false,
+                italic: false,
+            });
+            builder.add_content("Bold").unwrap();
+            assert!(builder.lines[0].chars[0].state.text_decoration.bold);
+        }
+
+        #[test]
+        fn reset_styles_clears_formatting() {
+            let mut builder = PrintBuilder::new(false);
+            builder.set_text_size(TextSize::ExtraLarge);
+            builder.set_text_decoration(TextDecoration {
+                bold: true,
+                underline: true,
+                italic: true,
+            });
+            builder.set_justify_content(Justify::Right);
+            builder.reset_styles();
+            builder.add_content("Normal").unwrap();
+
+            let last_line = builder.lines.last().unwrap();
+            assert_eq!(last_line.justify_content, Justify::Left);
+            assert_eq!(last_line.chars[0].state.text_size, TextSize::Medium);
+            assert!(!last_line.chars[0].state.text_decoration.bold);
+        }
+
+        #[test]
+        fn mixed_formatting_within_line() {
+            let mut builder = PrintBuilder::new(false);
+            builder.add_content("Normal ").unwrap();
+            builder.set_text_decoration(TextDecoration {
+                bold: true,
+                underline: false,
+                italic: false,
+            });
+            builder.add_content("Bold").unwrap();
+
+            let line = &builder.lines[0];
+            // First chars should not be bold
+            assert!(!line.chars[0].state.text_decoration.bold);
+            // Last chars should be bold (after "Normal ")
+            assert!(line.chars[7].state.text_decoration.bold);
+        }
+
+        #[test]
+        fn new_line_inherits_justify_from_previous() {
+            let mut builder = PrintBuilder::new(false);
+            builder.set_justify_content(Justify::Center);
+            builder.add_content("Line 1").unwrap();
+            builder.new_line();
+            builder.add_content("Line 2").unwrap();
+
+            assert_eq!(builder.lines[0].justify_content, Justify::Center);
+            assert_eq!(builder.lines[1].justify_content, Justify::Center);
+        }
+
+        #[test]
+        fn auto_wraps_long_content() {
+            let mut builder = PrintBuilder::new(false);
+            // Add content longer than CPL
+            let long_text = "a".repeat(CPL as usize + 10);
+            builder.add_content(&long_text).unwrap();
+
+            assert!(
+                builder.lines.len() >= 2,
+                "Long content should wrap to multiple lines"
+            );
+        }
+
+        #[test]
+        fn add_char_content_allows_fine_control() {
+            let mut builder = PrintBuilder::new(false);
+            let styled = StyledChar {
+                ch: 'X',
+                state: FormatState {
+                    text_size: TextSize::Large,
+                    text_decoration: TextDecoration {
+                        bold: true,
+                        underline: false,
+                        italic: false,
+                    },
+                },
+            };
+            builder.add_char_content(styled.clone()).unwrap();
+            assert_eq!(builder.lines[0].chars[0].ch, 'X');
+            assert_eq!(builder.lines[0].chars[0].state.text_size, TextSize::Large);
+        }
+    }
+
+    mod cpl_constant {
+        use super::*;
+
+        #[test]
+        fn cpl_is_48() {
+            assert_eq!(CPL, 48);
+        }
+    }
+}
