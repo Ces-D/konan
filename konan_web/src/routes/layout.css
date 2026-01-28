@@ -38,7 +38,6 @@ html[data-theme='dark'] {
 	--breakpoint-laptop: 64rem;
 	--breakpoint-desktop: 80rem;
 }
-
 @theme inline {
 	/* Colors */
 	--color-text: var(--text-color);

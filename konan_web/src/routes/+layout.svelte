@@ -5,21 +5,11 @@
 	import favicon96 from '$lib/assets/favicon/favicon-96x96.png';
 	import appleTouchIcon from '$lib/assets/favicon/apple-touch-icon.png';
 	import siteManifest from '$lib/assets/favicon/site.webmanifest';
-	import {
-		SvelteToast,
-		type SvelteToastOptions
-	} from '@zerodevx/svelte-toast';
+	import { SvelteToast } from '@zerodevx/svelte-toast';
+	import PrintHistory from '$lib/components/PrintHistory.svelte';
 
 	let { children } = $props();
-	const toastOptions: SvelteToastOptions = {
-		dismissable: true,
-		duration: 500,
-		theme: {
-			'--toastBackground': 'var(--color-primary-900)',
-			'--toastColor': 'var(--text-color-inverted)',
-			'--toastBarHeight': 0
-		}
-	};
+	// TODO: implement Confetti - https://github.com/Mitcheljager/svelte-confetti/blob/master/src/routes/ToggleConfetti.svelte
 </script>
 
 <svelte:head>
@@ -38,9 +28,14 @@
 				<img alt="Logo" class="w-12 h-12" src={appleTouchIcon} />
 				<h1>Konan</h1>
 			</nav>
-			<div class="text-right">Login,Logout</div>
 		</div>
 	</nav>
-	{@render children()}
-	<SvelteToast {...toastOptions} />
+
+	<main
+		class="grid grid-cols-1 gap-x-3 px-1 h-full grid-rows-[auto_1fr] tablet:grid-cols-[auto_1fr] tablet:grid-rows-1 tablet:px-0"
+	>
+		<PrintHistory />
+		{@render children()}
+		<SvelteToast />
+	</main>
 </div>

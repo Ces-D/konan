@@ -1,9 +1,16 @@
-import { DEMO_PRINT_HISTORY } from '$lib/data';
+import type { JSONContent } from '@tiptap/core';
 
-export type PrintHistory = Array<EditorContent>;
-export type EditorContent = { id: string; text: string };
+export type PrintHistoryEntry = {
+	id: string;
+	content: JSONContent;
+	printedAt: number;
+};
 
 export const CPL = 48;
+
+const DB_NAME = 'konan_print_history';
+const DB_VERSION = 1;
+const STORE_NAME = 'print_history';
 
 /** example: "f1a3c9e2b84d7a0c6f9d12e45a7b8c3d" */
 const randomId = () => {
@@ -12,45 +19,92 @@ const randomId = () => {
 	return Array.from(array, (b) => b.toString(16).padStart(2, '0')).join('');
 };
 
-export class UpsertPrintHistory {
-	text?: string | null;
-	id?: string | null;
-	constructor(text?: string | null, id?: string | null) {
-		this.text = text;
-		this.id = id;
-	}
-
-	private textIsValid(): boolean {
-		let isValid = false;
-		isValid = typeof this.text === 'string';
-		isValid = (this.text ?? '').trim().length > 0;
-		return isValid;
-	}
-	private isNewSession(): boolean {
-		return this.id == null;
-	}
-	private sessionId(): string {
-		return this.id ?? randomId();
-	}
-
-	execute() {
-		if (!this.textIsValid()) {
-			throw new Error('Text is not valid');
-		}
-		const content: EditorContent = {
-			id: this.sessionId(),
-			text: this.text!
-		};
-		if (!this.isNewSession()) {
-			const foundIndex = DEMO_PRINT_HISTORY.findIndex(
-				(v) => v.id == this.sessionId()
-			);
-			if (foundIndex > -1) {
-				DEMO_PRINT_HISTORY.splice(foundIndex, 1, content);
-				return DEMO_PRINT_HISTORY;
+function openDb(): Promise<IDBDatabase> {
+	return new Promise((resolve, reject) => {
+		const request = indexedDB.open(DB_NAME, DB_VERSION);
+		request.onerror = () => reject(request.error);
+		request.onsuccess = () => resolve(request.result);
+		request.onupgradeneeded = (event) => {
+			const db = (event.target as IDBOpenDBRequest).result;
+			if (!db.objectStoreNames.contains(STORE_NAME)) {
+				const store = db.createObjectStore(STORE_NAME, {
+					keyPath: 'id'
+				});
+				store.createIndex('printedAt', 'printedAt', { unique: false });
 			}
+		};
+	});
+}
+
+export class PrintHistoryStore {
+	private content: JSONContent | null;
+	private sessionId: string;
+
+	constructor(content: JSONContent | null, sessionId?: string | null) {
+		this.content = content;
+		this.sessionId = sessionId ?? randomId();
+	}
+
+	private isContentValid(): boolean {
+		return this.content != null && typeof this.content === 'object';
+	}
+
+	async save(): Promise<PrintHistoryEntry> {
+		if (!this.isContentValid()) {
+			throw new Error('Content is not valid');
 		}
-		DEMO_PRINT_HISTORY.push(content);
-		return DEMO_PRINT_HISTORY;
+
+		const entry: PrintHistoryEntry = {
+			id: this.sessionId,
+			content: this.content!,
+			printedAt: Date.now()
+		};
+
+		const db = await openDb();
+		return new Promise((resolve, reject) => {
+			const tx = db.transaction(STORE_NAME, 'readwrite');
+			const store = tx.objectStore(STORE_NAME);
+			const request = store.put(entry);
+			request.onerror = () => reject(request.error);
+			request.onsuccess = () => resolve(entry);
+			tx.oncomplete = () => db.close();
+		});
+	}
+
+	static async getById(id: string): Promise<PrintHistoryEntry | undefined> {
+		const db = await openDb();
+		return new Promise((resolve, reject) => {
+			const tx = db.transaction(STORE_NAME, 'readonly');
+			const store = tx.objectStore(STORE_NAME);
+			const request = store.get(id);
+			request.onerror = () => reject(request.error);
+			request.onsuccess = () => resolve(request.result);
+			tx.oncomplete = () => db.close();
+		});
+	}
+
+	static async getAll(): Promise<PrintHistoryEntry[]> {
+		const db = await openDb();
+		return new Promise((resolve, reject) => {
+			const tx = db.transaction(STORE_NAME, 'readonly');
+			const store = tx.objectStore(STORE_NAME);
+			const index = store.index('printedAt');
+			const request = index.getAll();
+			request.onerror = () => reject(request.error);
+			request.onsuccess = () => resolve(request.result);
+			tx.oncomplete = () => db.close();
+		});
+	}
+
+	static async delete(id: string): Promise<void> {
+		const db = await openDb();
+		return new Promise((resolve, reject) => {
+			const tx = db.transaction(STORE_NAME, 'readwrite');
+			const store = tx.objectStore(STORE_NAME);
+			const request = store.delete(id);
+			request.onerror = () => reject(request.error);
+			request.onsuccess = () => resolve();
+			tx.oncomplete = () => db.close();
+		});
 	}
 }

@@ -1,0 +1,97 @@
+const BASE_API = 'http://127.0.0.1:8080';
+
+export class OutlineTemplate {
+	private rows?: number;
+	private banner?: string;
+	private date?: Date;
+	private lined: boolean = false;
+
+	private setRows(r: number) {
+		if (r > 0) {
+			this.rows = r;
+		}
+	}
+	private setBanner(b: string) {
+		if (b.trim().length > 0) {
+			this.banner = b;
+		}
+	}
+	private setDate(d: Date) {
+		this.date = d;
+	}
+	private setLined(l: boolean) {
+		this.lined = l;
+	}
+
+	constructor(data: FormData) {
+		const rows = data.get('rows');
+		if (rows) {
+			this.setRows(parseInt(rows.toString()));
+		}
+		const banner = data.get('banner');
+		if (banner) {
+			this.setBanner(banner.toString());
+		}
+		const date = data.get('date');
+		if (date) {
+			this.setDate(new Date(date.toString()));
+		}
+		this.setLined(Boolean(data.get('lined') ?? false));
+	}
+
+	async printOutlineTemplate() {
+		const url = new URL('/template/outline', BASE_API);
+		if (this.rows) {
+			url.searchParams.set('rows', this.rows.toString());
+		}
+		if (this.date) {
+			url.searchParams.set('date', this.date.toISOString());
+		}
+		if (this.banner) {
+			url.searchParams.set('banner', this.banner);
+		}
+		url.searchParams.set('lined', this.lined.toString());
+		const res = await fetch(url, { method: 'GET' });
+		if (res.ok) {
+			return { success: true, message: 'Printed template successfully!' };
+		} else {
+			return { success: false, message: await res.text() };
+		}
+	}
+}
+
+export class HabitTrackerTemplate {
+	private habit: string;
+	private startDate: Date;
+	private endDate: Date;
+
+	constructor(data: FormData) {
+		const habit = (data.get('habit') ?? '').toString().trim();
+		this.habit = habit;
+		const startDate = data.get('start-date');
+		if (startDate) {
+			this.startDate = new Date(startDate.toString());
+		} else {
+			this.startDate = new Date();
+		}
+		const endDate = data.get('end-date');
+		if (endDate) {
+			this.endDate = new Date(endDate.toString());
+		} else {
+			this.endDate = new Date();
+		}
+	}
+
+	async printHabitTrackerTemplate() {
+		const url = new URL('/template/habit-tracker', BASE_API);
+		url.searchParams.set('habit', this.habit);
+		url.searchParams.set('start_date', this.startDate.toISOString());
+		url.searchParams.set('end_date', this.endDate.toISOString());
+		const res = await fetch(url, { method: 'GET' });
+		if (res.ok) {
+			return { success: true, message: 'Printed template successfully!' };
+		} else {
+			return { success: true, message: await res.text() };
+		}
+	}
+}

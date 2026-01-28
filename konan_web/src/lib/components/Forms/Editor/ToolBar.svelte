@@ -1,21 +1,21 @@
 <script lang="ts">
 	import { Editor } from '@tiptap/core';
 	import ToolBarButton from './ToolBarButton.svelte';
-	import Heading1Icon from '../Icons/Heading1.svelte';
-	import Heading2Icon from '../Icons/Heading2.svelte';
-	import Heading3Icon from '../Icons/Heading3.svelte';
-	import Heading4Icon from '../Icons/Heading4.svelte';
-	import ParagraphIcon from '../Icons/Paragraph.svelte';
-	import BoldIcon from '../Icons/Bold.svelte';
-	import ItalicIcon from '../Icons/Italic.svelte';
-	import UnderlineIcon from '../Icons/Underline.svelte';
-	import CodeIcon from '../Icons/Code.svelte';
-	import BulletListIcon from '../Icons/BulletList.svelte';
-	import NumberListIcon from '../Icons/NumberList.svelte';
-	import CheckBoxListIcon from '../Icons/CheckBoxList.svelte';
-	import LeftAlignIcon from '../Icons/LeftAlign.svelte';
-	import RightAlignIcon from '../Icons/RightAlign.svelte';
-	import CenterAlignIcon from '../Icons/CenterAlign.svelte';
+	import Heading1Icon from '$lib/components/Icons/Heading1.svelte';
+	import Heading2Icon from '$lib/components/Icons/Heading2.svelte';
+	import Heading3Icon from '$lib/components/Icons/Heading3.svelte';
+	import Heading4Icon from '$lib/components/Icons/Heading4.svelte';
+	import ParagraphIcon from '$lib/components/Icons/Paragraph.svelte';
+	import BoldIcon from '$lib/components/Icons/Bold.svelte';
+	import ItalicIcon from '$lib/components/Icons/Italic.svelte';
+	import UnderlineIcon from '$lib/components/Icons/Underline.svelte';
+	import CodeIcon from '$lib/components/Icons/Code.svelte';
+	import BulletListIcon from '$lib/components/Icons/BulletList.svelte';
+	import NumberListIcon from '$lib/components/Icons/NumberList.svelte';
+	import CheckBoxListIcon from '$lib/components/Icons/CheckBoxList.svelte';
+	import LeftAlignIcon from '$lib/components/Icons/LeftAlign.svelte';
+	import RightAlignIcon from '$lib/components/Icons/RightAlign.svelte';
+	import CenterAlignIcon from '$lib/components/Icons/CenterAlign.svelte';
 
 	const { editor }: { editor?: Editor | null } = $props();
 </script>
@@ -157,13 +157,13 @@
 </div>
 
 <style lang="postcss">
-	@reference "../../../routes/layout.css";
+	@reference "../../../../routes/layout.css";
 	.toolbar {
-		@apply flex justify-center;
+		@apply flex flex-wrap justify-center;
 	}
 
 	.toolbar-button-container {
-		@apply m-2 grid h-20 grid-cols-1 grid-rows-2 p-2;
+		@apply m-2 grid grid-cols-1 grid-rows-2 p-2;
 	}
 	.toolbar-button-container:last-child {
 		@apply border-r-0;
