@@ -1,9 +1,8 @@
 use anyhow::Result;
 use comrak::nodes::{AstNode, NodeValue};
-use rongta::{
-    PrintBuilder,
-    elements::{Justify, TextDecoration, TextSize},
-};
+use rongta::{PrintBuilder, elements::TextDecoration};
+
+use crate::display_utils;
 
 pub struct MarkdownFileAdapter {
     builder: PrintBuilder,
@@ -40,7 +39,8 @@ impl MarkdownFileAdapter {
                     italic: false,
                     underline: true,
                 });
-                self.builder.set_justify_content(Justify::Center);
+                self.builder
+                    .set_justify_content(rongta::elements::Justify::Center);
                 self.render_children(node)?;
                 self.builder.new_line();
                 self.builder.new_line();
@@ -98,28 +98,12 @@ impl MarkdownFileAdapter {
                     "NodeValue::Heading triggered (level: {})",
                     node_heading.level
                 );
-                let (size, decoration) = match node_heading.level {
-                    1 => (TextSize::ExtraLarge, TextDecoration::default()),
-                    2 => (
-                        TextSize::Large,
-                        TextDecoration {
-                            bold: true,
-                            ..Default::default()
-                        },
-                    ),
-                    3 => (TextSize::Large, TextDecoration::default()),
-                    _ => (
-                        TextSize::Medium,
-                        TextDecoration {
-                            bold: true,
-                            ..Default::default()
-                        },
-                    ),
-                };
+                let (size, decoration) = display_utils::heading_style(node_heading.level);
                 self.builder.new_line();
                 self.builder.set_text_size(size);
                 self.builder.set_text_decoration(decoration);
-                self.builder.set_justify_content(Justify::Center);
+                self.builder
+                    .set_justify_content(rongta::elements::Justify::Center);
                 self.render_children(node)?;
                 self.builder.new_line();
                 self.builder.reset_styles();
@@ -135,11 +119,7 @@ impl MarkdownFileAdapter {
                     bold: true,
                     ..Default::default()
                 });
-                let prefix = if node_task_item.symbol.is_some() {
-                    "[x] "
-                } else {
-                    "[ ] "
-                };
+                let prefix = display_utils::task_item_prefix(node_task_item.symbol.is_some());
                 self.builder.add_content(prefix)?;
                 self.builder.reset_styles();
                 self.render_children(node)
@@ -189,6 +169,8 @@ impl MarkdownFileAdapter {
             }
             NodeValue::Strikethrough => {
                 log::trace!("NodeValue::Strikethrough triggered");
+                // For strikethrough in markdown, we need to render children and wrap with dashes
+                // Since children are nodes (not plain text), we render them between the dashes
                 self.builder.add_content("--")?;
                 self.render_children(node)?;
                 self.builder.add_content("--")
@@ -200,7 +182,8 @@ impl MarkdownFileAdapter {
             NodeValue::Image(node_link) => {
                 log::trace!("NodeValue::Image triggered");
                 self.builder.new_line();
-                self.builder.set_justify_content(Justify::Center);
+                self.builder
+                    .set_justify_content(rongta::elements::Justify::Center);
 
                 self.builder.add_content(&node_link.title)?;
                 self.builder.new_line();

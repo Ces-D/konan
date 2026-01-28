@@ -1,8 +1,9 @@
 use actix_web::{HttpResponse, Responder, get};
-
-mod history;
-mod template;
 use serde::Serialize;
+
+mod editor;
+pub use editor::message;
+mod template;
 pub use template::{habit_tracker, outline};
 
 #[get("/health")]

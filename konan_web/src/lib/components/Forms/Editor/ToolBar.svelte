@@ -7,7 +7,6 @@
 	import Heading4Icon from '$lib/components/Icons/Heading4.svelte';
 	import ParagraphIcon from '$lib/components/Icons/Paragraph.svelte';
 	import BoldIcon from '$lib/components/Icons/Bold.svelte';
-	import ItalicIcon from '$lib/components/Icons/Italic.svelte';
 	import UnderlineIcon from '$lib/components/Icons/Underline.svelte';
 	import CodeIcon from '$lib/components/Icons/Code.svelte';
 	import BulletListIcon from '$lib/components/Icons/BulletList.svelte';
@@ -74,13 +73,6 @@
 				title="Bold (Ctrl+B)"
 			>
 				<BoldIcon />
-			</ToolBarButton>
-			<ToolBarButton
-				onClick={() => editor?.chain().focus().toggleItalic().run()}
-				isActive={editor?.isActive('italic')}
-				title="Italic (Ctrl+I)"
-			>
-				<ItalicIcon />
 			</ToolBarButton>
 			<ToolBarButton
 				onClick={() => editor?.chain().focus().toggleUnderline().run()}

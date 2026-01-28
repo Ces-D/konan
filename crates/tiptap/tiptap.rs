@@ -74,7 +74,6 @@ pub struct JSONContent {
     /// The type of the node (e.g., Doc, Paragraph, Text)
     #[serde(rename = "type", skip_serializing_if = "Option::is_none")]
     pub node_type: Option<NodeType>,
-
     /// The attributes of the node. Attributes can have any JSON-serializable value.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub attrs: Option<HashMap<String, serde_json::Value>>,
@@ -97,6 +96,86 @@ pub struct JSONContent {
     /// Additional arbitrary properties that may be present on the node.
     #[serde(flatten)]
     pub extra: HashMap<String, serde_json::Value>,
+}
+
+impl JSONContent {
+    /// Returns the `language` attribute for `codeBlock` nodes.
+    pub fn code_block_language(&self) -> Option<&str> {
+        if self.node_type != Some(NodeType::CodeBlock) {
+            return None;
+        }
+        self.attrs
+            .as_ref()?
+            .get("language")?
+            .as_str()
+    }
+
+    /// Returns the `textAlign` attribute for `paragraph` nodes.
+    pub fn paragraph_text_align(&self) -> Option<&str> {
+        if self.node_type != Some(NodeType::Paragraph) {
+            return None;
+        }
+        self.attrs
+            .as_ref()?
+            .get("textAlign")?
+            .as_str()
+    }
+
+    /// Returns the `level` attribute for `heading` nodes (1-6).
+    pub fn heading_level(&self) -> Option<u8> {
+        if self.node_type != Some(NodeType::Heading) {
+            return None;
+        }
+        self.attrs
+            .as_ref()?
+            .get("level")?
+            .as_u64()
+            .map(|v| v as u8)
+    }
+
+    /// Returns the `textAlign` attribute for `heading` nodes.
+    pub fn heading_text_align(&self) -> Option<&str> {
+        if self.node_type != Some(NodeType::Heading) {
+            return None;
+        }
+        self.attrs
+            .as_ref()?
+            .get("textAlign")?
+            .as_str()
+    }
+
+    /// Returns the `start` attribute for `orderedList` nodes.
+    pub fn ordered_list_start(&self) -> Option<i64> {
+        if self.node_type != Some(NodeType::OrderedList) {
+            return None;
+        }
+        self.attrs
+            .as_ref()?
+            .get("start")?
+            .as_i64()
+    }
+
+    /// Returns the `type` attribute for `orderedList` nodes (e.g., "1", "a", "A", "i", "I").
+    pub fn ordered_list_type(&self) -> Option<&str> {
+        if self.node_type != Some(NodeType::OrderedList) {
+            return None;
+        }
+        self.attrs
+            .as_ref()?
+            .get("type")?
+            .as_str()
+    }
+
+    /// Returns the `checked` attribute for `taskItem` nodes.
+    pub fn task_item_checked(&self) -> Option<bool> {
+        if self.node_type != Some(NodeType::TaskItem) {
+            return None;
+        }
+        self.attrs
+            .as_ref()?
+            .get("checked")?
+            .as_bool()
+    }
 }
 
 /// A mark applied to inline content (e.g., bold, italic, link).
@@ -193,5 +272,60 @@ mod tests {
         let deserialized: JSONContent = serde_json::from_str(&json).unwrap();
 
         assert_eq!(content, deserialized);
+    }
+
+    #[test]
+    fn test_code_block_language() {
+        let json = r#"{
+            "type": "codeBlock",
+            "attrs": { "language": "rust" },
+            "content": [{ "type": "text", "text": "let x = 1;" }]
+        }"#;
+        let node: JSONContent = serde_json::from_str(json).unwrap();
+        assert_eq!(node.code_block_language(), Some("rust"));
+
+        // Without language attr
+        let json_no_lang = r#"{ "type": "codeBlock" }"#;
+        let node_no_lang: JSONContent = serde_json::from_str(json_no_lang).unwrap();
+        assert_eq!(node_no_lang.code_block_language(), None);
+
+        // Wrong node type
+        let json_para = r#"{ "type": "paragraph", "attrs": { "language": "rust" } }"#;
+        let node_para: JSONContent = serde_json::from_str(json_para).unwrap();
+        assert_eq!(node_para.code_block_language(), None);
+    }
+
+    #[test]
+    fn test_paragraph_text_align() {
+        let json = r#"{ "type": "paragraph", "attrs": { "textAlign": "center" } }"#;
+        let node: JSONContent = serde_json::from_str(json).unwrap();
+        assert_eq!(node.paragraph_text_align(), Some("center"));
+    }
+
+    #[test]
+    fn test_heading_attrs() {
+        let json = r#"{ "type": "heading", "attrs": { "level": 2, "textAlign": "right" } }"#;
+        let node: JSONContent = serde_json::from_str(json).unwrap();
+        assert_eq!(node.heading_level(), Some(2));
+        assert_eq!(node.heading_text_align(), Some("right"));
+    }
+
+    #[test]
+    fn test_ordered_list_attrs() {
+        let json = r#"{ "type": "orderedList", "attrs": { "start": 5, "type": "a" } }"#;
+        let node: JSONContent = serde_json::from_str(json).unwrap();
+        assert_eq!(node.ordered_list_start(), Some(5));
+        assert_eq!(node.ordered_list_type(), Some("a"));
+    }
+
+    #[test]
+    fn test_task_item_checked() {
+        let json = r#"{ "type": "taskItem", "attrs": { "checked": true } }"#;
+        let node: JSONContent = serde_json::from_str(json).unwrap();
+        assert_eq!(node.task_item_checked(), Some(true));
+
+        let json_unchecked = r#"{ "type": "taskItem", "attrs": { "checked": false } }"#;
+        let node_unchecked: JSONContent = serde_json::from_str(json_unchecked).unwrap();
+        assert_eq!(node_unchecked.task_item_checked(), Some(false));
     }
 }

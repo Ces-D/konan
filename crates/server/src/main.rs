@@ -3,7 +3,7 @@ use std::env;
 use actix_cors::Cors;
 use actix_web::{
     App, HttpServer,
-    http::Method,
+    http::{Method, header},
     middleware::{Compress, Logger},
     web,
 };
@@ -25,7 +25,8 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(|| {
         let cors = Cors::default()
             .allowed_origin("http://localhost:3000")
-            .allowed_methods([Method::POST, Method::GET]);
+            .allowed_methods([Method::POST, Method::GET])
+            .allowed_headers([header::CONTENT_TYPE]);
 
         App::new()
             // ~~~ Global Middleware
@@ -39,6 +40,7 @@ async fn main() -> std::io::Result<()> {
                     .service(routes::outline)
                     .service(routes::habit_tracker),
             )
+            .service(web::scope("/editor").service(routes::message))
     })
     .bind((host.as_str(), port))?
     .run()

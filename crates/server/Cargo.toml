@@ -8,6 +8,7 @@ authors.workspace = true
 anyhow.workspace = true
 actix-cors.workspace = true
 actix-web.workspace = true
+actix-multipart.workspace = true
 env_logger.workspace = true
 log.workspace = true
 serde.workspace = true
@@ -15,3 +16,4 @@ chrono.workspace = true
 
 designs.workspace = true
 rongta.workspace = true
+tiptap.workspace = true

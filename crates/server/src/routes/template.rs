@@ -1,6 +1,7 @@
+use crate::routes::Message;
 use actix_web::{
     Result, get,
-    web::{self, Json},
+    web::{Json, Query},
 };
 use chrono::{DateTime, Utc};
 use designs::{
@@ -8,8 +9,6 @@ use designs::{
 };
 use rongta::PrintBuilder;
 use serde::Deserialize;
-
-use crate::routes::Message;
 
 #[derive(Debug, Deserialize, Default)]
 struct OutlineParams {
@@ -21,7 +20,7 @@ struct OutlineParams {
 
 /// Create a box with random borders
 #[get("/outline")]
-async fn outline(params: web::Query<OutlineParams>) -> Result<Json<Message>> {
+async fn outline(params: Query<OutlineParams>) -> Result<Json<Message>> {
     let pattern = designs::get_random_box_pattern()
         .map_err(|_| actix_web::error::ErrorInternalServerError("Pattern resource failure"))?;
     let builder = PrintBuilder::new(true);
@@ -47,7 +46,7 @@ struct HabitTrackerParams {
 }
 
 #[get("/habit-tracker")]
-async fn habit_tracker(params: web::Query<HabitTrackerParams>) -> Result<Json<Message>> {
+async fn habit_tracker(params: Query<HabitTrackerParams>) -> Result<Json<Message>> {
     let pattern = designs::get_random_box_pattern()
         .map_err(|_| actix_web::error::ErrorInternalServerError("Pattern resource failure"))?;
     let builder = PrintBuilder::new(true);
