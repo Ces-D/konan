@@ -1,8 +1,7 @@
+use crate::render;
 use anyhow::Result;
 use comrak::nodes::{AstNode, NodeValue};
-use rongta::{PrintBuilder, elements::TextDecoration};
-
-use crate::display_utils;
+use rongta::{PrintBuilder, ToBuilderCommand};
 
 pub struct MarkdownFileAdapter {
     builder: PrintBuilder,
@@ -12,8 +11,8 @@ impl MarkdownFileAdapter {
         Self { builder }
     }
     pub fn print(&mut self, content: &str, rows: Option<u32>) -> Result<()> {
-        let arena = comrak::Arena::new();
         let mut options = comrak::Options::default();
+        let arena = comrak::Arena::new();
         options.parse.smart = true;
         options.extension.strikethrough = true;
         options.extension.tasklist = true;
@@ -32,96 +31,62 @@ impl MarkdownFileAdapter {
             }
             NodeValue::BlockQuote => {
                 log::trace!("NodeValue::BlockQuote triggered");
-                self.builder.new_line();
-                self.builder.new_line();
-                self.builder.set_text_decoration(TextDecoration {
-                    bold: true,
-                    italic: false,
-                    underline: true,
-                });
-                self.builder
-                    .set_justify_content(rongta::elements::Justify::Center);
-                self.render_children(node)?;
-                self.builder.new_line();
-                self.builder.new_line();
-                self.builder.reset_styles();
-                Ok(())
+                let inner_text = get_inner_text(node);
+                let command = render::BlockQuote::new(inner_text);
+                command.to_builder_command(&mut self.builder)?;
+                self.render_children(node)
             }
             NodeValue::List(node_list) => {
                 log::trace!("NodeValue::List triggered");
-                self.builder.new_line();
-                self.render_children(node)?;
-                Ok(())
-            }
-            NodeValue::Item(node_list) => {
-                log::trace!("NodeValue::Item triggered");
-                self.builder.set_text_decoration(TextDecoration {
-                    bold: true,
-                    ..Default::default()
-                });
                 match node_list.list_type {
-                    comrak::nodes::ListType::Bullet => self.builder.add_content("- "),
-                    comrak::nodes::ListType::Ordered => self.builder.add_content(&format!(
-                        "{}{} ",
-                        node_list.start,
-                        match node_list.delimiter {
-                            comrak::nodes::ListDelimType::Period => '.',
-                            comrak::nodes::ListDelimType::Paren => ')',
-                        }
-                    )),
-                }?;
-                self.builder.reset_styles();
-                self.render_children(node)
+                    comrak::nodes::ListType::Bullet => {
+                        let command = render::ListItemBefore::new_unordered();
+                        command.to_builder_command(&mut self.builder)?;
+                        self.render_children(node)
+                    }
+                    comrak::nodes::ListType::Ordered => {
+                        let command =
+                            render::ListItemBefore::new_ordered(Some(node_list.start as u64), None);
+                        command.to_builder_command(&mut self.builder)?;
+                        self.render_children(node)
+                    }
+                }
             }
-            NodeValue::CodeBlock(node_code_block) => {
+            NodeValue::Item(_) => {
+                log::trace!("NodeValue::Item triggered");
+                let inner_text = get_inner_text(node);
+                let command = render::Text::new(inner_text, None, None);
+                command.to_builder_command(&mut self.builder)
+            }
+            NodeValue::CodeBlock(_) => {
                 log::trace!("NodeValue::CodeBlock triggered");
-                self.builder.new_line();
-                self.builder.new_line();
-                self.builder.set_text_decoration(TextDecoration {
-                    bold: true,
-                    ..Default::default()
-                });
-                self.builder.add_content(&node_code_block.literal)?;
-                self.builder.new_line();
-                self.builder.new_line();
-                self.builder.reset_styles();
-                Ok(())
+                let inner_text = get_inner_text(node);
+                let command = render::CodeBlock::new(inner_text);
+                command.to_builder_command(&mut self.builder)
             }
             NodeValue::Paragraph => {
                 log::trace!("NodeValue::Paragraph triggered");
-                self.render_children(node)?;
                 self.builder.new_line();
-                Ok(())
+                self.render_children(node)
             }
             NodeValue::Heading(node_heading) => {
                 log::trace!(
                     "NodeValue::Heading triggered (level: {})",
                     node_heading.level
                 );
-                let (size, decoration) = display_utils::heading_style(node_heading.level);
-                self.builder.new_line();
-                self.builder.set_text_size(size);
-                self.builder.set_text_decoration(decoration);
-                self.builder
-                    .set_justify_content(rongta::elements::Justify::Center);
-                self.render_children(node)?;
-                self.builder.new_line();
-                self.builder.reset_styles();
-                Ok(())
+                let inner_text = get_inner_text(node);
+                let command = render::Heading::new(inner_text, Some(node_heading.level));
+                command.to_builder_command(&mut self.builder)
             }
             NodeValue::Text(cow) => {
                 log::trace!("Text: {}", cow);
-                self.builder.add_content(cow)
+                let command = render::Text::new(cow.to_string(), None, None);
+                command.to_builder_command(&mut self.builder)
             }
             NodeValue::TaskItem(node_task_item) => {
                 log::trace!("NodeValue::TaskItem triggered");
-                self.builder.set_text_decoration(TextDecoration {
-                    bold: true,
-                    ..Default::default()
-                });
-                let prefix = display_utils::task_item_prefix(node_task_item.symbol.is_some());
-                self.builder.add_content(prefix)?;
-                self.builder.reset_styles();
+                let command = render::TaskListBefore::new(node_task_item.symbol.is_some());
+                command.to_builder_command(&mut self.builder)?;
                 self.render_children(node)
             }
             NodeValue::SoftBreak => {
@@ -136,58 +101,43 @@ impl MarkdownFileAdapter {
                 Ok(())
             }
             // Inline
-            NodeValue::Code(node_code) => {
+            NodeValue::Code(_) => {
                 log::trace!("NodeValue::Code triggered");
-                self.builder.set_text_decoration(TextDecoration {
-                    bold: true,
-                    underline: true,
-                    ..Default::default()
-                });
-                self.builder.add_content(&node_code.literal)?;
-                self.builder.reset_styles();
-                Ok(())
+                self.render_children(node)
             }
             NodeValue::Emph => {
                 log::trace!("NodeValue::Emph triggered");
-                self.builder.set_text_decoration(TextDecoration {
-                    underline: true,
-                    ..Default::default()
-                });
-                self.render_children(node)?;
-                self.builder.reset_styles();
-                Ok(())
+                let inner_text = get_inner_text(node);
+                let command = render::Text::new(inner_text, None, Some(true));
+                command.to_builder_command(&mut self.builder)
             }
             NodeValue::Strong => {
                 log::trace!("NodeValue::Strong triggered");
-                self.builder.set_text_decoration(TextDecoration {
-                    bold: true,
-                    ..Default::default()
-                });
-                self.render_children(node)?;
-                self.builder.reset_styles();
-                Ok(())
+                let inner_text = get_inner_text(node);
+                let command = render::Text::new(inner_text, None, Some(true));
+                command.to_builder_command(&mut self.builder)
             }
             NodeValue::Strikethrough => {
                 log::trace!("NodeValue::Strikethrough triggered");
-                // For strikethrough in markdown, we need to render children and wrap with dashes
-                // Since children are nodes (not plain text), we render them between the dashes
+                let inner_text = get_inner_text(node);
                 self.builder.add_content("--")?;
-                self.render_children(node)?;
+                let command = render::Text::new(inner_text, None, Some(true));
+                command.to_builder_command(&mut self.builder)?;
                 self.builder.add_content("--")
             }
             NodeValue::Link(node_link) => {
                 log::trace!("NodeValue::Link triggered");
-                self.builder.add_content(&node_link.title)
+                let command = render::Text::new(node_link.title.clone(), None, Some(true));
+                command.to_builder_command(&mut self.builder)
             }
             NodeValue::Image(node_link) => {
                 log::trace!("NodeValue::Image triggered");
                 self.builder.new_line();
                 self.builder
                     .set_justify_content(rongta::elements::Justify::Center);
-
-                self.builder.add_content(&node_link.title)?;
+                let command = render::Text::new(node_link.title.clone(), None, Some(true));
+                command.to_builder_command(&mut self.builder)?;
                 self.builder.new_line();
-                self.builder.reset_styles();
                 Ok(())
             }
             _ => self.render_children(node), // NodeValue::FrontMatter(_) => todo!(),
@@ -228,4 +178,16 @@ impl MarkdownFileAdapter {
         }
         Ok(())
     }
+}
+
+/// Only goes one level deep in search of text
+fn get_inner_text<'a>(node: &'a AstNode<'a>) -> String {
+    let mut inner_text = String::new();
+    for child in node.children() {
+        match &child.data().value {
+            NodeValue::Text(cow) => inner_text.push_str(&cow.to_string()),
+            _ => continue,
+        }
+    }
+    inner_text
 }

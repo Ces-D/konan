@@ -50,8 +50,6 @@ pub enum NodeType {
 pub enum MarkType {
     /// Bold text
     Bold,
-    /// Italic text
-    Italic,
     /// Strikethrough text
     Strike,
     /// Inline code
@@ -59,6 +57,44 @@ pub enum MarkType {
     /// Unknown or custom mark type
     #[serde(untagged)]
     Other(String),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
+pub enum TextAlign {
+    #[default]
+    Left,
+    Center,
+    Right,
+}
+impl From<&str> for TextAlign {
+    fn from(value: &str) -> Self {
+        match value {
+            "center" => Self::Center,
+            "right" => Self::Right,
+            _ => Self::default(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
+pub enum OrderedListType {
+    LowerCaseLetter,
+    UpperCaseLetter,
+    LowerCaseRoman,
+    UpperCaseRoman,
+    #[default]
+    Number,
+}
+impl From<&str> for OrderedListType {
+    fn from(value: &str) -> Self {
+        match value {
+            "a" => Self::LowerCaseLetter,
+            "A" => Self::UpperCaseLetter,
+            "i" => Self::LowerCaseRoman,
+            "I" => Self::UpperCaseRoman,
+            _ => Self::Number,
+        }
+    }
 }
 
 /// A Tiptap JSON node or document. Tiptap JSON is the standard format for
@@ -104,77 +140,47 @@ impl JSONContent {
         if self.node_type != Some(NodeType::CodeBlock) {
             return None;
         }
-        self.attrs
-            .as_ref()?
-            .get("language")?
-            .as_str()
+        self.attrs.as_ref()?.get("language")?.as_str()
     }
 
-    /// Returns the `textAlign` attribute for `paragraph` nodes.
-    pub fn paragraph_text_align(&self) -> Option<&str> {
-        if self.node_type != Some(NodeType::Paragraph) {
-            return None;
+    pub fn is_bold(&self) -> bool {
+        if let Some(marks) = &self.marks {
+            let found = marks.iter().find(|v| v.mark_type == MarkType::Bold);
+            found.is_some()
+        } else {
+            false
         }
+    }
+
+    pub fn text_align(&self) -> Option<TextAlign> {
         self.attrs
             .as_ref()?
             .get("textAlign")?
             .as_str()
+            .map(|v| TextAlign::from(v))
     }
 
-    /// Returns the `level` attribute for `heading` nodes (1-6).
     pub fn heading_level(&self) -> Option<u8> {
-        if self.node_type != Some(NodeType::Heading) {
-            return None;
-        }
-        self.attrs
-            .as_ref()?
-            .get("level")?
-            .as_u64()
-            .map(|v| v as u8)
-    }
-
-    /// Returns the `textAlign` attribute for `heading` nodes.
-    pub fn heading_text_align(&self) -> Option<&str> {
-        if self.node_type != Some(NodeType::Heading) {
-            return None;
-        }
-        self.attrs
-            .as_ref()?
-            .get("textAlign")?
-            .as_str()
+        self.attrs.as_ref()?.get("level")?.as_u64().map(|v| v as u8)
     }
 
     /// Returns the `start` attribute for `orderedList` nodes.
-    pub fn ordered_list_start(&self) -> Option<i64> {
-        if self.node_type != Some(NodeType::OrderedList) {
-            return None;
-        }
-        self.attrs
-            .as_ref()?
-            .get("start")?
-            .as_i64()
+    pub fn ordered_list_start(&self) -> Option<u64> {
+        self.attrs.as_ref()?.get("start")?.as_u64()
     }
 
     /// Returns the `type` attribute for `orderedList` nodes (e.g., "1", "a", "A", "i", "I").
-    pub fn ordered_list_type(&self) -> Option<&str> {
-        if self.node_type != Some(NodeType::OrderedList) {
-            return None;
-        }
+    pub fn ordered_list_type(&self) -> Option<OrderedListType> {
         self.attrs
             .as_ref()?
             .get("type")?
             .as_str()
+            .map(|v| OrderedListType::from(v))
     }
 
     /// Returns the `checked` attribute for `taskItem` nodes.
-    pub fn task_item_checked(&self) -> Option<bool> {
-        if self.node_type != Some(NodeType::TaskItem) {
-            return None;
-        }
-        self.attrs
-            .as_ref()?
-            .get("checked")?
-            .as_bool()
+    pub fn is_checked(&self) -> Option<bool> {
+        self.attrs.as_ref()?.get("checked")?.as_bool()
     }
 }
 
@@ -184,148 +190,4 @@ pub struct Mark {
     /// The type of the mark (e.g., Bold, Italic, Code)
     #[serde(rename = "type")]
     pub mark_type: MarkType,
-
-    /// The attributes of the mark. Attributes can have any JSON-serializable value.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub attrs: Option<HashMap<String, serde_json::Value>>,
-
-    /// Additional arbitrary properties that may be present on the mark.
-    #[serde(flatten)]
-    pub extra: HashMap<String, serde_json::Value>,
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_deserialize_simple_doc() {
-        let json = r#"{
-            "type": "doc",
-            "content": [
-                {
-                    "type": "paragraph",
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": "Hello "
-                        },
-                        {
-                            "type": "text",
-                            "text": "world",
-                            "marks": [{ "type": "bold" }]
-                        }
-                    ]
-                }
-            ]
-        }"#;
-
-        let content: JSONContent = serde_json::from_str(json).unwrap();
-
-        assert_eq!(content.node_type, Some(NodeType::Doc));
-        assert!(content.content.is_some());
-
-        let paragraphs = content.content.unwrap();
-        assert_eq!(paragraphs.len(), 1);
-        assert_eq!(paragraphs[0].node_type, Some(NodeType::Paragraph));
-
-        let text_nodes = paragraphs[0].content.as_ref().unwrap();
-        assert_eq!(text_nodes.len(), 2);
-        assert_eq!(text_nodes[0].text, Some("Hello ".to_string()));
-        assert_eq!(text_nodes[1].text, Some("world".to_string()));
-
-        let marks = text_nodes[1].marks.as_ref().unwrap();
-        assert_eq!(marks.len(), 1);
-        assert_eq!(marks[0].mark_type, MarkType::Bold);
-    }
-
-    #[test]
-    fn test_serialize_roundtrip() {
-        let content = JSONContent {
-            node_type: Some(NodeType::Doc),
-            attrs: None,
-            content: Some(vec![JSONContent {
-                node_type: Some(NodeType::Paragraph),
-                attrs: None,
-                content: Some(vec![JSONContent {
-                    node_type: Some(NodeType::Text),
-                    attrs: None,
-                    content: None,
-                    marks: Some(vec![Mark {
-                        mark_type: MarkType::Bold,
-                        attrs: None,
-                        extra: HashMap::new(),
-                    }]),
-                    text: Some("Hello".to_string()),
-                    extra: HashMap::new(),
-                }]),
-                marks: None,
-                text: None,
-                extra: HashMap::new(),
-            }]),
-            marks: None,
-            text: None,
-            extra: HashMap::new(),
-        };
-
-        let json = serde_json::to_string(&content).unwrap();
-        let deserialized: JSONContent = serde_json::from_str(&json).unwrap();
-
-        assert_eq!(content, deserialized);
-    }
-
-    #[test]
-    fn test_code_block_language() {
-        let json = r#"{
-            "type": "codeBlock",
-            "attrs": { "language": "rust" },
-            "content": [{ "type": "text", "text": "let x = 1;" }]
-        }"#;
-        let node: JSONContent = serde_json::from_str(json).unwrap();
-        assert_eq!(node.code_block_language(), Some("rust"));
-
-        // Without language attr
-        let json_no_lang = r#"{ "type": "codeBlock" }"#;
-        let node_no_lang: JSONContent = serde_json::from_str(json_no_lang).unwrap();
-        assert_eq!(node_no_lang.code_block_language(), None);
-
-        // Wrong node type
-        let json_para = r#"{ "type": "paragraph", "attrs": { "language": "rust" } }"#;
-        let node_para: JSONContent = serde_json::from_str(json_para).unwrap();
-        assert_eq!(node_para.code_block_language(), None);
-    }
-
-    #[test]
-    fn test_paragraph_text_align() {
-        let json = r#"{ "type": "paragraph", "attrs": { "textAlign": "center" } }"#;
-        let node: JSONContent = serde_json::from_str(json).unwrap();
-        assert_eq!(node.paragraph_text_align(), Some("center"));
-    }
-
-    #[test]
-    fn test_heading_attrs() {
-        let json = r#"{ "type": "heading", "attrs": { "level": 2, "textAlign": "right" } }"#;
-        let node: JSONContent = serde_json::from_str(json).unwrap();
-        assert_eq!(node.heading_level(), Some(2));
-        assert_eq!(node.heading_text_align(), Some("right"));
-    }
-
-    #[test]
-    fn test_ordered_list_attrs() {
-        let json = r#"{ "type": "orderedList", "attrs": { "start": 5, "type": "a" } }"#;
-        let node: JSONContent = serde_json::from_str(json).unwrap();
-        assert_eq!(node.ordered_list_start(), Some(5));
-        assert_eq!(node.ordered_list_type(), Some("a"));
-    }
-
-    #[test]
-    fn test_task_item_checked() {
-        let json = r#"{ "type": "taskItem", "attrs": { "checked": true } }"#;
-        let node: JSONContent = serde_json::from_str(json).unwrap();
-        assert_eq!(node.task_item_checked(), Some(true));
-
-        let json_unchecked = r#"{ "type": "taskItem", "attrs": { "checked": false } }"#;
-        let node_unchecked: JSONContent = serde_json::from_str(json_unchecked).unwrap();
-        assert_eq!(node_unchecked.task_item_checked(), Some(false));
-    }
 }

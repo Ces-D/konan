@@ -1,7 +1,7 @@
 pub mod box_template;
-mod display_utils;
 pub mod habit_tracker_template;
 pub mod markdown_adapter;
+mod render;
 pub mod tiptap_adapter;
 
 use anyhow::Context;
