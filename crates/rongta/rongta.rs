@@ -207,6 +207,11 @@ impl Line {
     }
 }
 
+/// Call the PrintBuilder in a consistent way
+pub trait ToBuilderCommand {
+    fn to_builder_command(&self, builder: &mut PrintBuilder) -> Result<()>;
+}
+
 #[derive(Default)]
 pub struct PrintBuilder {
     lines: Vec<Line>,
@@ -558,10 +563,7 @@ mod tests {
                 for ch in text.chars() {
                     if let Some(new_line) = line.add_char(styled_char(ch)) {
                         // The new line should start with "word" (after space removed)
-                        assert!(
-                            !new_line.chars.is_empty(),
-                            "New line should have content"
-                        );
+                        assert!(!new_line.chars.is_empty(), "New line should have content");
                         // The original line should end without trailing space
                         if let Some(last) = line.chars.last() {
                             // After wrap, the space should be removed
@@ -690,10 +692,7 @@ mod tests {
             let mut builder = PrintBuilder::new(false);
             builder.set_text_size(TextSize::Large);
             builder.add_content("Big").unwrap();
-            assert_eq!(
-                builder.lines[0].chars[0].state.text_size,
-                TextSize::Large
-            );
+            assert_eq!(builder.lines[0].chars[0].state.text_size, TextSize::Large);
         }
 
         #[test]

@@ -1,7 +1,7 @@
 use anyhow::Result;
 use escpos::utils::{JustifyMode, UnderlineMode};
 
-use crate::{cp437, AnyPrinter};
+use crate::{AnyPrinter, cp437};
 
 pub trait ToPrintCommand {
     fn to_print_command(&self, printer: &mut AnyPrinter) -> Result<()>;
