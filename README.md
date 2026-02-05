@@ -2,13 +2,36 @@
 
 Konan is a system for receiving messages and media from a client (like a phone or laptop), processing them, and printing them on a Rongta RP326 receipt printer. The goal is to create a seamless interface for physical printing.
 
+## Architecture
+
+### Frontend
+
+**Goal**: A public interface to trigger commands to be printed.
+
+A Svelte web client written in Typescript exposing:
+
+- WYSIWYG editor with a narrow scope of printer friendly extensions
+- Buttons that trigger pre-baked printer actions
+
+**Method**
+The web client will be hosted as a static site in an S3 bucket.
+
+### Bridge
+
+**Goal**: Exposing the raspberry pi to "outside" actions while maintaining security
+
+Three AWS technologies will power the bridge between a raspberry pi connectd to a private network and the public internet.
+
+1. _API Gateway_ - Provides endpoints for the frontend to `POST` to
+2. _Lambda functions_ - Provides handlers for API endpoints. Triggers publication of IoTCore events
+3. _IoTCore_ - Is pub/sub for the raspberry pi. Publishing events triggered from the Lambda functions. Subscribing the Pi to take action based on the message.
+
 ## Rongta Model RP326
 
 > 📌 A “code page” controls how byte values map to printed characters — especially accented letters and special symbols.
 > Different printers may support slightly different sets, but these are the most common.
 
 [ Manual ](https://www.cleancss.com/user-manuals/2AD6G/-RP326-USE)
----
 
 ### Common ESC/POS Code Pages (with examples)
 
@@ -50,15 +73,6 @@ If your app sends the byte `0x80`…
 - in **WPC1252**, it prints `€`
 
 Same byte — **different characters** depending on code page.
-
----
-
-### How this affects you in practice
-
-- If accented characters look **wrong or garbled**, select another code page.
-- Most modern POS systems use **WPC1252** by default.
-- If you print **Russian or Cyrillic**, switch to **PC866**.
-- Older restaurant systems sometimes expect **PC850**.
 
 ---
 

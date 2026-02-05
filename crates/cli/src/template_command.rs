@@ -4,7 +4,7 @@ use clap::{Parser, Subcommand};
 use designs::{
     box_template::BoxTemplateBuilder, habit_tracker_template::HabitTrackerTemplateBuilder,
 };
-use rongta::PrintBuilder;
+use rongta::{RongtaPrinter, SupportedDriver};
 
 #[derive(clap::ValueEnum, Clone, Copy, Debug, Default)]
 pub enum DateBanner {
@@ -128,7 +128,7 @@ pub async fn handle_template_command(args: TemplateArgs, cut: bool) -> anyhow::R
             banner,
         } => {
             let pattern = designs::get_random_box_pattern()?;
-            let builder = PrintBuilder::new(cut);
+            let builder = RongtaPrinter::new(cut);
             let mut template = BoxTemplateBuilder::new(builder, pattern);
             template
                 .set_rows(rows.unwrap_or(29))
@@ -138,7 +138,7 @@ pub async fn handle_template_command(args: TemplateArgs, cut: bool) -> anyhow::R
                 template.set_date_banner(d.into());
             }
 
-            template.print()?;
+            template.print(SupportedDriver::Console)?;
         }
         TemplateCommand::HabitTracker {
             habit,
@@ -146,7 +146,7 @@ pub async fn handle_template_command(args: TemplateArgs, cut: bool) -> anyhow::R
             time_period,
         } => {
             let pattern = designs::get_random_box_pattern()?;
-            let builder = PrintBuilder::new(cut);
+            let builder = RongtaPrinter::new(cut);
             let start = if let Some(date_str) = start_date {
                 chrono::NaiveDate::parse_from_str(&date_str, "%Y-%m-%d")
                     .context("Invalid date format. Expected YYYY-MM-DD")?
@@ -163,7 +163,7 @@ pub async fn handle_template_command(args: TemplateArgs, cut: bool) -> anyhow::R
                 start,
                 time_period.unwrap_or_default().into_end_date(start),
             );
-            template.print()?;
+            template.print(SupportedDriver::Console)?;
         }
     }
     Ok(())

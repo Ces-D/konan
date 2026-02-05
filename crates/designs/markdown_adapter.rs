@@ -1,16 +1,21 @@
 use crate::render;
 use anyhow::Result;
 use comrak::nodes::{AstNode, NodeValue};
-use rongta::{PrintBuilder, ToBuilderCommand};
+use rongta::{RongtaPrinter, SupportedDriver, ToBuilderCommand};
 
 pub struct MarkdownFileAdapter {
-    builder: PrintBuilder,
+    builder: RongtaPrinter,
 }
 impl MarkdownFileAdapter {
-    pub fn new(builder: PrintBuilder) -> Self {
+    pub fn new(builder: RongtaPrinter) -> Self {
         Self { builder }
     }
-    pub fn print(&mut self, content: &str, rows: Option<u32>) -> Result<()> {
+    pub fn print(
+        &mut self,
+        content: &str,
+        rows: Option<u32>,
+        driver: SupportedDriver,
+    ) -> Result<()> {
         let mut options = comrak::Options::default();
         let arena = comrak::Arena::new();
         options.parse.smart = true;
@@ -18,7 +23,7 @@ impl MarkdownFileAdapter {
         options.extension.tasklist = true;
         let root = comrak::parse_document(&arena, content, &options);
         self.render_node(root)?;
-        self.builder.print(rows)?;
+        self.builder.print(rows, driver)?;
         log::info!("Markdown file printed");
         Ok(())
     }

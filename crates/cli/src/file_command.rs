@@ -1,7 +1,10 @@
 use anyhow::bail;
 use clap::Parser;
 use log::{info, trace};
-use rongta::elements::{Justify, TextDecoration};
+use rongta::{
+    RongtaPrinter, SupportedDriver,
+    elements::{Justify, TextDecoration},
+};
 use std::{
     ffi::OsStr,
     fs::File,
@@ -49,12 +52,12 @@ pub async fn handle_file_command(args: FileArgs, cut: bool) -> anyhow::Result<()
         // Markdown rendering path
         info!("Rendering markdown file with formatting");
         let content = std::fs::read_to_string(&args.path)?;
-        let builder = rongta::PrintBuilder::new(cut);
+        let builder = RongtaPrinter::new(cut);
         let mut renderer = MarkdownFileAdapter::new(builder);
-        renderer.print(&content, pagination)?;
+        renderer.print(&content, pagination, SupportedDriver::Console)?;
     } else {
         // Plain text rendering path (existing logic)
-        let mut builder = rongta::PrintBuilder::new(cut);
+        let mut builder = RongtaPrinter::new(cut);
         let file_content = read_file_lines(&args.path)?;
 
         for line in file_content {
@@ -68,7 +71,7 @@ pub async fn handle_file_command(args: FileArgs, cut: bool) -> anyhow::Result<()
             builder.add_content(&line)?;
             builder.new_line();
         }
-        builder.print(pagination)?;
+        builder.print(pagination, SupportedDriver::Console)?;
     }
 
     Ok(())

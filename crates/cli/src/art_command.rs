@@ -1,5 +1,8 @@
 use clap::{Parser, Subcommand};
-use rongta::elements::{FormatState, StyledChar, TextDecoration, TextSize};
+use rongta::{
+    RongtaPrinter, SupportedDriver,
+    elements::{FormatState, StyledChar, TextDecoration, TextSize},
+};
 
 #[derive(Debug, Subcommand)]
 pub enum ArtCommand {
@@ -20,7 +23,7 @@ pub async fn handle_art_command(args: ArtArgs, cut: bool) -> anyhow::Result<()> 
     match args.command {
         ArtCommand::Banner { message } => {
             let pattern = designs::get_random_box_pattern()?;
-            let mut builder = rongta::PrintBuilder::new(cut);
+            let mut builder = RongtaPrinter::new(cut);
             builder.add_content(&pattern.top)?;
             builder.new_line();
             builder.add_content(&pattern.top)?;
@@ -44,7 +47,7 @@ pub async fn handle_art_command(args: ArtArgs, cut: bool) -> anyhow::Result<()> 
             builder.add_content(&pattern.top)?;
             builder.new_line();
             builder.new_line();
-            builder.print(None)?;
+            builder.print(None, SupportedDriver::Console)?;
             Ok(())
         }
     }

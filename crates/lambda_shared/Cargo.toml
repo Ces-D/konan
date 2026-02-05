@@ -1,0 +1,11 @@
+[package]
+name = "lambda_shared"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+
+[lib]
+path = "lambda_shared.rs"
+
+[dependencies]
+serde.workspace = true

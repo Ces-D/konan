@@ -1,20 +1,25 @@
 use crate::render;
 use anyhow::Result;
-use rongta::{PrintBuilder, ToBuilderCommand, elements::Justify};
+use rongta::{RongtaPrinter, SupportedDriver, ToBuilderCommand, elements::Justify};
 use tiptap::{JSONContent, NodeType};
 
 pub struct TipTapJsonAdapter {
-    builder: PrintBuilder,
+    builder: RongtaPrinter,
 }
 
 impl TipTapJsonAdapter {
-    pub fn new(builder: PrintBuilder) -> Self {
+    pub fn new(builder: RongtaPrinter) -> Self {
         Self { builder }
     }
 
-    pub fn print(mut self, content: JSONContent, rows: Option<u32>) -> Result<()> {
+    pub fn print(
+        mut self,
+        content: JSONContent,
+        rows: Option<u32>,
+        driver: SupportedDriver,
+    ) -> Result<()> {
         self.render_content(&content)?;
-        self.builder.print(rows)?;
+        self.builder.print(rows, driver)?;
         log::info!("Tiptap content printed");
         Ok(())
     }

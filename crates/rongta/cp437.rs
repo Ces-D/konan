@@ -1,5 +1,4 @@
 use anyhow::{Result, bail};
-use std::borrow::Cow;
 use std::collections::HashSet;
 use std::sync::LazyLock;
 
@@ -36,48 +35,6 @@ pub fn normalize_char(ch: char) -> Option<char> {
         '\u{2013}' | '\u{2014}' => Some('-'),
         _ => None,
     }
-}
-
-/// Normalize a string by converting Unicode typographic characters to ASCII equivalents.
-/// - Curly apostrophes (' ') → straight apostrophe (')
-/// - Curly quotes (" ") → straight quote (")
-/// - En-dash (–), em-dash (—) → hyphen-minus (-)
-/// - Ellipsis (…) → three periods (...)
-pub fn normalize_to_ascii(s: &str) -> Cow<'_, str> {
-    // Fast path: check if any normalization is needed
-    let needs_normalization = s.chars().any(|ch| {
-        matches!(
-            ch,
-            '\u{2018}'
-                | '\u{2019}'
-                | '\u{02BC}'
-                | '\u{201C}'
-                | '\u{201D}'
-                | '\u{2013}'
-                | '\u{2014}'
-                | '\u{2026}'
-        )
-    });
-
-    if !needs_normalization {
-        return Cow::Borrowed(s);
-    }
-
-    let normalized: String = s
-        .chars()
-        .flat_map(|ch| {
-            if ch == '\u{2026}' {
-                // Ellipsis → three periods (expands to multiple chars)
-                vec!['.', '.', '.']
-            } else if let Some(replacement) = normalize_char(ch) {
-                vec![replacement]
-            } else {
-                vec![ch]
-            }
-        })
-        .collect();
-
-    Cow::Owned(normalized)
 }
 
 /// Check if a character is valid in CP437.
@@ -154,74 +111,6 @@ mod tests {
         fn returns_none_for_cp437_extended() {
             assert_eq!(normalize_char('é'), None);
             assert_eq!(normalize_char('║'), None);
-        }
-    }
-
-    mod normalize_to_ascii {
-        use super::*;
-
-        #[test]
-        fn returns_borrowed_when_no_normalization_needed() {
-            let input = "Hello, World!";
-            let result = normalize_to_ascii(input);
-            assert!(matches!(result, Cow::Borrowed(_)));
-            assert_eq!(result, "Hello, World!");
-        }
-
-        #[test]
-        fn normalizes_curly_quotes_in_string() {
-            // "Hello," she said, 'it's great!'
-            let input = "\u{201C}Hello,\u{201D} she said, \u{2018}it\u{2019}s great!\u{2019}";
-            let result = normalize_to_ascii(input);
-            assert!(matches!(result, Cow::Owned(_)));
-            assert_eq!(result, "\"Hello,\" she said, 'it's great!'");
-        }
-
-        #[test]
-        fn normalizes_dashes() {
-            // 2020–2024 — a long time (en-dash and em-dash)
-            let input = "2020\u{2013}2024 \u{2014} a long time";
-            let result = normalize_to_ascii(input);
-            assert_eq!(result, "2020-2024 - a long time");
-        }
-
-        #[test]
-        fn expands_ellipsis_to_three_periods() {
-            // Wait for it…
-            let input = "Wait for it\u{2026}";
-            let result = normalize_to_ascii(input);
-            assert_eq!(result, "Wait for it...");
-        }
-
-        #[test]
-        fn handles_multiple_ellipses() {
-            // One… two… three…
-            let input = "One\u{2026} two\u{2026} three\u{2026}";
-            let result = normalize_to_ascii(input);
-            assert_eq!(result, "One... two... three...");
-        }
-
-        #[test]
-        fn handles_mixed_normalizations() {
-            // "It's… complicated," he said—really!
-            let input = "\u{201C}It\u{2019}s\u{2026} complicated,\u{201D} he said\u{2014}really!";
-            let result = normalize_to_ascii(input);
-            assert_eq!(result, "\"It's... complicated,\" he said-really!");
-        }
-
-        #[test]
-        fn empty_string_returns_borrowed() {
-            let result = normalize_to_ascii("");
-            assert!(matches!(result, Cow::Borrowed(_)));
-            assert_eq!(result, "");
-        }
-
-        #[test]
-        fn preserves_cp437_extended_characters() {
-            let input = "Price: £50 ± 10%";
-            let result = normalize_to_ascii(input);
-            assert!(matches!(result, Cow::Borrowed(_)));
-            assert_eq!(result, "Price: £50 ± 10%");
         }
     }
 
