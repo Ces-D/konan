@@ -1,6 +1,6 @@
 use anyhow::Result;
 use rongta::{
-    PrintBuilder, ToBuilderCommand,
+    RongtaPrinter, ToBuilderCommand,
     elements::{FormatState, Justify, TextDecoration, TextSize},
 };
 use tiptap::OrderedListType;
@@ -81,7 +81,7 @@ impl ListItemBefore {
     }
 }
 impl ToBuilderCommand for ListItemBefore {
-    fn to_builder_command(&self, builder: &mut PrintBuilder) -> Result<()> {
+    fn to_builder_command(&self, builder: &mut RongtaPrinter) -> Result<()> {
         log::trace!("Justification ignored for list items");
         builder.new_line();
         builder.reset_styles();
@@ -116,7 +116,7 @@ impl TaskListBefore {
     }
 }
 impl ToBuilderCommand for TaskListBefore {
-    fn to_builder_command(&self, builder: &mut PrintBuilder) -> Result<()> {
+    fn to_builder_command(&self, builder: &mut RongtaPrinter) -> Result<()> {
         builder.new_line();
         builder.reset_styles();
         builder.set_text_size(self.format.text_size);
@@ -144,7 +144,7 @@ impl Text {
     }
 }
 impl ToBuilderCommand for Text {
-    fn to_builder_command(&self, builder: &mut PrintBuilder) -> Result<()> {
+    fn to_builder_command(&self, builder: &mut RongtaPrinter) -> Result<()> {
         builder.set_text_size(self.format.text_size);
         builder.set_text_decoration(self.format.text_decoration);
         builder.add_content(&self.content)
@@ -188,7 +188,7 @@ impl Heading {
     }
 }
 impl ToBuilderCommand for Heading {
-    fn to_builder_command(&self, builder: &mut PrintBuilder) -> Result<()> {
+    fn to_builder_command(&self, builder: &mut RongtaPrinter) -> Result<()> {
         builder.new_line();
         builder.reset_styles();
         builder.set_text_size(self.format.text_size);
@@ -219,7 +219,7 @@ impl BlockQuote {
     }
 }
 impl ToBuilderCommand for BlockQuote {
-    fn to_builder_command(&self, builder: &mut PrintBuilder) -> Result<()> {
+    fn to_builder_command(&self, builder: &mut RongtaPrinter) -> Result<()> {
         builder.new_line();
         builder.reset_styles();
         builder.set_text_size(self.format.text_size);
@@ -250,7 +250,7 @@ impl CodeBlock {
     }
 }
 impl ToBuilderCommand for CodeBlock {
-    fn to_builder_command(&self, builder: &mut PrintBuilder) -> Result<()> {
+    fn to_builder_command(&self, builder: &mut RongtaPrinter) -> Result<()> {
         builder.new_line();
         builder.reset_styles();
         builder.set_text_size(self.format.text_size);
@@ -281,7 +281,7 @@ impl HorizontalRule {
     }
 }
 impl ToBuilderCommand for HorizontalRule {
-    fn to_builder_command(&self, builder: &mut PrintBuilder) -> Result<()> {
+    fn to_builder_command(&self, builder: &mut RongtaPrinter) -> Result<()> {
         builder.new_line();
         builder.reset_styles();
         builder.set_text_size(self.format.text_size);

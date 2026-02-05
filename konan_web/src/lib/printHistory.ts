@@ -12,11 +12,8 @@ const DB_NAME = 'konan_print_history';
 const DB_VERSION = 1;
 const STORE_NAME = 'print_history';
 
-/** example: "f1a3c9e2b84d7a0c6f9d12e45a7b8c3d" */
 const randomId = () => {
-	const array = new Uint8Array(16);
-	crypto.getRandomValues(array);
-	return Array.from(array, (b) => b.toString(16).padStart(2, '0')).join('');
+	return crypto.randomUUID();
 };
 
 function openDb(): Promise<IDBDatabase> {

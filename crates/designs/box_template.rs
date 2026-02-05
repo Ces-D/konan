@@ -2,12 +2,12 @@ use super::BoxPattern;
 use anyhow::Result;
 use chrono::{DateTime, Local};
 use rongta::{
-    PrintBuilder,
+    RongtaPrinter, SupportedDriver,
     elements::{Justify, TextDecoration, TextSize},
 };
 
 pub struct BoxTemplateBuilder {
-    builder: PrintBuilder,
+    builder: RongtaPrinter,
     date: Option<DateTime<Local>>,
     banner: Option<String>,
     rows: u32,
@@ -16,7 +16,7 @@ pub struct BoxTemplateBuilder {
 }
 
 impl BoxTemplateBuilder {
-    pub fn new(builder: PrintBuilder, pattern: BoxPattern) -> Self {
+    pub fn new(builder: RongtaPrinter, pattern: BoxPattern) -> Self {
         Self {
             builder,
             date: None,
@@ -133,13 +133,13 @@ impl BoxTemplateBuilder {
     }
 
     /// AKA build
-    pub fn print(&mut self) -> Result<()> {
+    pub fn print(&mut self, driver: SupportedDriver) -> Result<()> {
         self.with_text_banner()?;
         self.with_date_banner()?;
         self.with_top()?;
         self.with_rows()?;
         self.with_bottom()?;
-        self.builder.print(None)?;
+        self.builder.print(None, driver)?;
         log::info!("Printed box template");
         Ok(())
     }

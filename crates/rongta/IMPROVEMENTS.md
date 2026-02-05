@@ -31,6 +31,7 @@ impl ToPrintCommand for TextDecoration {
 ```
 
 **Problem:** The italic branch calls `underline()` instead of an italic command. This means:
+
 - If `underline=true, italic=false`: underline is set, then immediately turned off
 - If `underline=false, italic=true`: underline is turned on (wrong behavior)
 
@@ -60,6 +61,7 @@ impl ToPrintCommand for StyledChar {
 ```
 
 **Problem:** Every character triggers 3-4 ESC/POS commands regardless of whether formatting changed. For a 48-character line with uniform formatting:
+
 - Current: ~192 commands (4 per char)
 - Optimal: ~5 commands (set format once, write 48 chars, reset)
 
@@ -123,6 +125,7 @@ fn add_char(&mut self, sch: StyledChar) -> Option<Line> {
 ```
 
 **Problem:** Each `add_char()` call computes `visual_width()` by iterating all characters. For building a 48-character line:
+
 - Iterations: 1 + 2 + 3 + ... + 48 = 1,176
 
 **Impact:** Quadratic time complexity in line length.
@@ -266,7 +269,7 @@ pub fn print_to(&self, printer: &mut AnyPrinter, rows: Option<u32>) -> anyhow::R
 
 ## Simplicity Issues
 
-### 1. AnyPrinter Match Boilerplate
+### 1. RESOLVED -- AnyPrinter Match Boilerplate
 
 **File:** `rongta.rs:26-133`
 
@@ -332,7 +335,7 @@ impl AnyPrinter {
 
 ---
 
-### 2. Unnecessary Pop/Push Pattern
+### 2. RESOLVED -- Unnecessary Pop/Push Pattern
 
 **File:** `rongta.rs:251-274`
 
@@ -367,16 +370,16 @@ pub fn add_content(&mut self, content: &str) -> Result<()> {
 
 ## Summary Table
 
-| Category | Issue | Location | Severity | Impact |
-|----------|-------|----------|----------|--------|
-| Bug | Italic overwrites underline | elements.rs:56-59 | Critical | Incorrect output |
-| Speed | Per-char ESC/POS commands | elements.rs:93-103 | High | ~40x excess I/O |
-| Speed | O(n²) width calculation | rongta.rs:183-207 | Medium | Quadratic time |
-| Speed | Vec alloc in normalization | cp437.rs:66-78 | Low | Allocator pressure |
-| Space | Per-char format storage | elements.rs:88-92 | Medium | ~8x memory overhead |
-| Space | Full document buffering | rongta.rs:313-353 | Low | Memory scales with doc |
-| Simplicity | AnyPrinter boilerplate | rongta.rs:26-133 | Medium | 100+ redundant lines |
-| Simplicity | Pop/push line pattern | rongta.rs:251-274 | Low | Unclear semantics |
+| Category   | Issue                       | Location           | Severity | Impact                 |
+| ---------- | --------------------------- | ------------------ | -------- | ---------------------- |
+| Bug        | Italic overwrites underline | elements.rs:56-59  | Critical | Incorrect output       |
+| Speed      | Per-char ESC/POS commands   | elements.rs:93-103 | High     | ~40x excess I/O        |
+| Speed      | O(n²) width calculation     | rongta.rs:183-207  | Medium   | Quadratic time         |
+| Speed      | Vec alloc in normalization  | cp437.rs:66-78     | Low      | Allocator pressure     |
+| Space      | Per-char format storage     | elements.rs:88-92  | Medium   | ~8x memory overhead    |
+| Space      | Full document buffering     | rongta.rs:313-353  | Low      | Memory scales with doc |
+| Simplicity | AnyPrinter boilerplate      | rongta.rs:26-133   | Medium   | 100+ redundant lines   |
+| Simplicity | Pop/push line pattern       | rongta.rs:251-274  | Low      | Unclear semantics      |
 
 ---
 

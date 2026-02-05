@@ -2,12 +2,12 @@ use super::BoxPattern;
 use anyhow::Result;
 use chrono::{DateTime, Datelike, Days, Duration, Utc};
 use rongta::{
-    PrintBuilder,
+    RongtaPrinter, SupportedDriver,
     elements::{Justify, TextDecoration, TextSize},
 };
 
 pub struct HabitTrackerTemplateBuilder {
-    builder: PrintBuilder,
+    builder: RongtaPrinter,
     habit: String,
     start_date: DateTime<Utc>,
     end_date: DateTime<Utc>,
@@ -16,7 +16,7 @@ pub struct HabitTrackerTemplateBuilder {
 
 impl HabitTrackerTemplateBuilder {
     pub fn new(
-        builder: PrintBuilder,
+        builder: RongtaPrinter,
         pattern: BoxPattern,
         habit: String,
         start_date: DateTime<Utc>,
@@ -112,14 +112,14 @@ impl HabitTrackerTemplateBuilder {
         Ok(())
     }
 
-    pub fn print(&mut self) -> Result<()> {
+    pub fn print(&mut self, driver: SupportedDriver) -> Result<()> {
         self.with_time_period()?;
         self.with_top()?;
         self.with_habit()?;
         self.with_top()?;
         self.with_checkmarks()?;
         self.with_bottom()?;
-        self.builder.print(None)?;
+        self.builder.print(None, driver)?;
         log::info!("Printed habit tracker template");
         Ok(())
     }
