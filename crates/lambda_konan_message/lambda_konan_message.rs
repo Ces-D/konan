@@ -1,7 +1,6 @@
-use aws_config::BehaviorVersion;
 use aws_sdk_iotdataplane::primitives::Blob;
 use lambda_runtime::{Error, LambdaEvent, service_fn};
-use lambda_shared::Message;
+use lambda_shared::{IotConfigEnv, Message, create_iot_client};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -11,14 +10,13 @@ struct PrintableMessage {
 }
 
 async fn func(event: LambdaEvent<PrintableMessage>) -> Result<Message, Error> {
-    let config = aws_config::load_defaults(BehaviorVersion::latest()).await;
-    let client = aws_sdk_iotdataplane::Client::new(&config);
+    let iot_env = IotConfigEnv::new();
+    let client = create_iot_client(iot_env.endpoint).await;
     let payload = serde_json::to_string(&event.payload).unwrap();
-    let blob = Blob::new(payload);
     client
         .publish()
-        .topic(lambda_shared::topic())
-        .payload(blob)
+        .topic(iot_env.topic)
+        .payload(Blob::new(payload))
         .qos(0)
         .send()
         .await?;
