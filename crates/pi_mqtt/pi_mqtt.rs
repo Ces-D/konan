@@ -35,6 +35,7 @@ struct HabitTrackerTemplate {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    println!("Starting Konan iot client");
     // AWS IoT Core endpoint (replace with your endpoint)
     let endpoint = std::env::var("KONAN_IOT_ENDPOINT_URL").unwrap();
     let port = std::env::var("KONAN_IOT_PORT").unwrap().parse().unwrap();
