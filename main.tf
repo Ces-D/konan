@@ -51,19 +51,14 @@ resource "aws_iot_thing" "raspberry_pi" {
   name = "${var.project_name}_pi"
 }
 
-resource "aws_iot_certificate" "pi_cert" {
-  active = true
-  # Note: We're not specifying the certificate content because it already exists
-}
-
 resource "aws_iot_thing_principal_attachment" "pi_cert_attachment" {
   thing     = aws_iot_thing.raspberry_pi.name
-  principal = aws_iot_certificate.pi_cert.arn
+  principal = var.pi_certificate_arn
 }
 
 resource "aws_iot_policy_attachment" "pi_policy_attachment" {
   policy = aws_iot_policy.pi_policy.name
-  target = aws_iot_certificate.pi_cert.arn
+  target = var.pi_certificate_arn
 }
 
 resource "aws_iot_policy" "pi_policy" {

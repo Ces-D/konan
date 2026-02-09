@@ -49,6 +49,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 if let rumqttc::Event::Incoming(rumqttc::Packet::Publish(msg)) = notification {
                     let payload = String::from_utf8_lossy(&msg.payload);
                     println!("Received message on topic '{}': {}", msg.topic, payload);
+                } else {
+                    println!("Received unhandleed notification: {:?}", notification)
                 }
             }
             Err(e) => {
