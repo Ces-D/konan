@@ -1,5 +1,5 @@
 output "s3_website_url" {
-  value = "http://${aws_s3_bucket.website_bucket.bucket}.s3-website-${var.region}.amazonaws.com"
+  value = "https://${aws_cloudfront_distribution.s3_distribution.domain_name}"
 }
 
 output "pi_policy" {

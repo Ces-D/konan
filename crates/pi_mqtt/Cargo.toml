@@ -5,12 +5,19 @@ edition.workspace = true
 authors.workspace = true
 
 [dependencies]
+anyhow.workspace = true
 rumqttc.workspace = true
 tokio.workspace = true
 tokio-rustls.workspace = true
 rustls.workspace = true
 rustls-pemfile.workspace = true
+chrono.workspace = true
+serde.workspace = true
+serde_json.workspace = true
 
+rongta.workspace = true
+designs.workspace = true
+tiptap.workspace = true
 
 [[bin]]
 name = "pi_mqtt"
