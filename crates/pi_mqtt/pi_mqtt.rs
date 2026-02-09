@@ -91,7 +91,6 @@ async fn main() -> Result<()> {
                             template.set_rows(rows);
                         }
                         template.print(driver)?;
-                        return Ok(());
                     } else if msg.topic == "command/konan_pi/habits" {
                         let params: HabitTrackerTemplate = serde_json::from_str(&payload).unwrap();
                         let mut template = HabitTrackerTemplateBuilder::new(
