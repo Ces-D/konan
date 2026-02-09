@@ -4,6 +4,10 @@ variable "project_name" {
   default     = "konan"
 }
 
+variable "pi_certificate_arn" {
+  type = string
+}
+
 variable "region" {
   default = "us-east-1"
 }
