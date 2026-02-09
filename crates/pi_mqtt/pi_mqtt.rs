@@ -10,9 +10,9 @@ use tokio::time::Duration;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     // AWS IoT Core endpoint (replace with your endpoint)
-    let endpoint = "your-endpoint.iot.us-east-1.amazonaws.com";
-    let port = 8883;
-    let client_id = "raspberry-pi-5-subscriber";
+    let endpoint = std::env::var("KONAN_IOT_ENDPOINT_URL").unwrap();
+    let port = std::env::var("KONAN_IOT_PORT").unwrap().parse().unwrap();
+    let client_id = std::env::var("KONAN_IOT_CLIENT_ID").unwrap();
 
     // Set up MQTT options
     let mut mqttoptions = MqttOptions::new(client_id, endpoint, port);
