@@ -1,5 +1,6 @@
 import { env } from '$env/dynamic/public';
-const PUBLIC_KONAN_SERVER_API = env.PUBLIC_KONAN_SERVER_API;
+const HABITS_ENDPOINT = env.PUBLIC_HABITS_ENDPOINT;
+const OUTLINE_ENDPOINT = env.PUBLIC_OUTLINE_ENDPOINT;
 
 export class OutlineTemplate {
 	private rows?: number;
@@ -41,7 +42,7 @@ export class OutlineTemplate {
 	}
 
 	async printOutlineTemplate() {
-		const url = new URL('/template/outline', PUBLIC_KONAN_SERVER_API);
+		const url = new URL(OUTLINE_ENDPOINT!);
 		if (this.rows) {
 			url.searchParams.set('rows', this.rows.toString());
 		}
@@ -84,7 +85,7 @@ export class HabitTrackerTemplate {
 	}
 
 	async printHabitTrackerTemplate() {
-		const url = new URL('/template/habit-tracker', PUBLIC_KONAN_SERVER_API);
+		const url = new URL(HABITS_ENDPOINT!);
 		url.searchParams.set('habit', this.habit);
 		url.searchParams.set('start_date', this.startDate.toISOString());
 		url.searchParams.set('end_date', this.endDate.toISOString());
