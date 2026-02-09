@@ -1,5 +1,9 @@
 use aws_sdk_iotdataplane::primitives::Blob;
-use lambda_runtime::{Error, LambdaEvent, service_fn};
+use lambda_http::{
+    Error, IntoResponse, Request, RequestPayloadExt,
+    http::{Response, StatusCode},
+    run, service_fn,
+};
 use lambda_shared::{IotConfigEnv, Message, create_iot_client};
 use serde::{Deserialize, Serialize};
 
@@ -9,10 +13,12 @@ struct PrintableMessage {
     rows: Option<u32>,
 }
 
-async fn func(event: LambdaEvent<PrintableMessage>) -> Result<Message, Error> {
+async fn handler(event: Request) -> Result<impl IntoResponse, Error> {
+    let body = event.payload::<PrintableMessage>()?;
+    tracing::info!("Received event body: {:?}", body);
     let iot_env = IotConfigEnv::new();
     let client = create_iot_client(iot_env.endpoint).await;
-    let payload = serde_json::to_string(&event.payload).unwrap();
+    let payload = serde_json::to_string(&body).unwrap();
     client
         .publish()
         .topic(iot_env.topic)
@@ -20,12 +26,16 @@ async fn func(event: LambdaEvent<PrintableMessage>) -> Result<Message, Error> {
         .qos(0)
         .send()
         .await?;
-    Ok(Message::default())
+    let response = Response::builder()
+        .status(StatusCode::OK)
+        .header("Content-Type", "application/json")
+        .body(serde_json::json!(Message::default()).to_string())
+        .map_err(Box::new)?;
+    Ok(response)
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    let func = service_fn(func);
-    lambda_runtime::run(func).await?;
-    Ok(())
+    lambda_shared::initialize_tracing();
+    run(service_fn(handler)).await
 }

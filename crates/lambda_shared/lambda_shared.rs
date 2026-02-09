@@ -37,3 +37,12 @@ pub async fn create_iot_client(endpoint: String) -> Client {
     let client = aws_sdk_iotdataplane::Client::from_conf(config);
     client
 }
+
+pub fn initialize_tracing() {
+    tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::INFO)
+        // This creates a single-line output that CloudWatch likes
+        .with_target(false)
+        .without_time()
+        .init();
+}

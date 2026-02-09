@@ -43,17 +43,16 @@ export class OutlineTemplate {
 
 	async printOutlineTemplate() {
 		const url = new URL(OUTLINE_ENDPOINT!);
-		if (this.rows) {
-			url.searchParams.set('rows', this.rows.toString());
-		}
-		if (this.date) {
-			url.searchParams.set('date', this.date.toISOString());
-		}
-		if (this.banner) {
-			url.searchParams.set('banner', this.banner);
-		}
-		url.searchParams.set('lined', this.lined.toString());
-		const res = await fetch(url, { method: 'GET' });
+		const res = await fetch(url, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				rows: this.rows,
+				date: this.date,
+				banner: this.banner,
+				lined: this.lined
+			})
+		});
 		if (res.ok) {
 			return { success: true, message: 'Printed template successfully!' };
 		} else {
@@ -86,10 +85,15 @@ export class HabitTrackerTemplate {
 
 	async printHabitTrackerTemplate() {
 		const url = new URL(HABITS_ENDPOINT!);
-		url.searchParams.set('habit', this.habit);
-		url.searchParams.set('start_date', this.startDate.toISOString());
-		url.searchParams.set('end_date', this.endDate.toISOString());
-		const res = await fetch(url, { method: 'GET' });
+		const res = await fetch(url, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				habit: this.habit,
+				start_date: this.startDate.toISOString(),
+				end_date: this.endDate.toISOString()
+			})
+		});
 		if (res.ok) {
 			return { success: true, message: 'Printed template successfully!' };
 		} else {
