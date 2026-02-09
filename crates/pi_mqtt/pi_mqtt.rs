@@ -3,7 +3,8 @@ use rustls::pki_types::{CertificateDer, PrivateKeyDer, PrivatePkcs1KeyDer, Priva
 use rustls_pemfile::{certs, pkcs8_private_keys, rsa_private_keys};
 use std::error::Error;
 use std::fs::File;
-use std::io::BufReader;
+use std::io::{self, BufReader};
+use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::time::Duration;
 
@@ -20,9 +21,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     // Configure TLS
     let tls_config = configure_tls(
-        ".iot-device/certs/konan.pem",
-        ".iot-device/certs/konan_private.key",
-        ".iot-device/certs/AmazonRootCA1.pem",
+        "~/.iot-device/certs/konan.pem",
+        "~/.iot-device/certs/konan_private.key",
+        "~/.iot-device/certs/AmazonRootCA1.pem",
     )?;
 
     mqttoptions.set_transport(Transport::Tls(tls_config));
@@ -63,41 +64,172 @@ fn configure_tls(
     key_path: &str,
     ca_path: &str,
 ) -> Result<TlsConfiguration, Box<dyn Error>> {
+    // Expand leading '~' to the user's home directory so paths like
+    // '~/.iot-device/certs/*' resolve correctly.
+    fn expand_home(p: &str) -> PathBuf {
+        let home = || {
+            std::env::var_os("HOME")
+                .map(PathBuf::from)
+                .or_else(|| std::env::var_os("USERPROFILE").map(PathBuf::from))
+        };
+
+        if p == "~" {
+            return home().unwrap_or_else(|| PathBuf::from("~"));
+        }
+        if let Some(rest) = p.strip_prefix("~/") {
+            return home()
+                .map(|h| h.join(rest))
+                .unwrap_or_else(|| PathBuf::from(p));
+        }
+        PathBuf::from(p)
+    }
+
+    let cert_path = expand_home(cert_path);
+    let key_path = expand_home(key_path);
+    let ca_path = expand_home(ca_path);
+
     // Load device/client certificate chain (DER)
-    let mut cert_reader = BufReader::new(File::open(cert_path)?);
-    let client_certs: Vec<CertificateDer<'static>> =
-        certs(&mut cert_reader).collect::<Result<_, _>>()?;
+    let mut cert_reader = BufReader::new(File::open(&cert_path).map_err(|e| {
+        io::Error::new(
+            e.kind(),
+            format!(
+                "failed to open client certificate at '{}': {}",
+                cert_path.display(),
+                e
+            ),
+        )
+    })?);
+    let client_certs: Vec<CertificateDer<'static>> = certs(&mut cert_reader)
+        .collect::<Result<_, _>>()
+        .map_err(|e| {
+            io::Error::new(
+                io::ErrorKind::InvalidData,
+                format!(
+                    "failed to parse client certificate PEM(s) in '{}': {}",
+                    cert_path.display(),
+                    e
+                ),
+            )
+        })?;
+    if client_certs.is_empty() {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            format!(
+                "no client certificates found in '{}'. Ensure the file contains PEM-encoded certificate(s)",
+                cert_path.display()
+            ),
+        )
+        .into());
+    }
 
     // Load private key (support PKCS#8 and PKCS#1/RSA)
-    let mut key_reader = BufReader::new(File::open(key_path)?);
+    let mut key_reader = BufReader::new(File::open(&key_path).map_err(|e| {
+        io::Error::new(
+            e.kind(),
+            format!(
+                "failed to open private key at '{}': {}",
+                key_path.display(),
+                e
+            ),
+        )
+    })?);
     // Try PKCS#8 keys first
-    let pkcs8_keys: Vec<PrivatePkcs8KeyDer<'static>> =
-        pkcs8_private_keys(&mut key_reader).collect::<Result<_, _>>()?;
+    let pkcs8_keys: Vec<PrivatePkcs8KeyDer<'static>> = pkcs8_private_keys(&mut key_reader)
+        .collect::<Result<_, _>>()
+        .map_err(|e| {
+            io::Error::new(
+                io::ErrorKind::InvalidData,
+                format!(
+                    "failed to parse PKCS#8 private key in '{}': {}",
+                    key_path.display(),
+                    e
+                ),
+            )
+        })?;
     let mut keys: Vec<PrivateKeyDer<'static>> = pkcs8_keys.into_iter().map(Into::into).collect();
 
     if keys.is_empty() {
         // Retry as RSA (PKCS#1) if PKCS#8 not found
-        let mut key_reader = BufReader::new(File::open(key_path)?);
-        let pkcs1_keys: Vec<PrivatePkcs1KeyDer<'static>> =
-            rsa_private_keys(&mut key_reader).collect::<Result<_, _>>()?;
+        let mut key_reader = BufReader::new(File::open(&key_path).map_err(|e| {
+            io::Error::new(
+                e.kind(),
+                format!(
+                    "failed to open private key at '{}': {}",
+                    key_path.display(),
+                    e
+                ),
+            )
+        })?);
+        let pkcs1_keys: Vec<PrivatePkcs1KeyDer<'static>> = rsa_private_keys(&mut key_reader)
+            .collect::<Result<_, _>>()
+            .map_err(|e| {
+                io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    format!(
+                        "failed to parse RSA (PKCS#1) private key in '{}': {}",
+                        key_path.display(),
+                        e
+                    ),
+                )
+            })?;
         keys = pkcs1_keys.into_iter().map(Into::into).collect();
     }
-    let private_key: PrivateKeyDer<'static> = keys
-        .into_iter()
-        .next()
-        .ok_or("no private key found in key file")?;
+    let private_key: PrivateKeyDer<'static> = keys.into_iter().next().ok_or_else(|| {
+        io::Error::new(
+            io::ErrorKind::InvalidData,
+            format!(
+                "no usable private key found in '{}'. Ensure it is an unencrypted PKCS#8 or PKCS#1 (RSA) key",
+                key_path.display()
+            ),
+        )
+    })?;
 
     // Load Amazon Root CA(s) and build trust store
-    let mut ca_reader = BufReader::new(File::open(ca_path)?);
-    let ca_der: Vec<CertificateDer<'static>> = certs(&mut ca_reader).collect::<Result<_, _>>()?;
+    let mut ca_reader = BufReader::new(File::open(&ca_path).map_err(|e| {
+        io::Error::new(
+            e.kind(),
+            format!("failed to open CA bundle at '{}': {}", ca_path.display(), e),
+        )
+    })?);
+    let ca_der: Vec<CertificateDer<'static>> = certs(&mut ca_reader)
+        .collect::<Result<_, _>>()
+        .map_err(|e| {
+            io::Error::new(
+                io::ErrorKind::InvalidData,
+                format!(
+                    "failed to parse CA certificate PEM(s) in '{}': {}",
+                    ca_path.display(),
+                    e
+                ),
+            )
+        })?;
     let mut root_cert_store = rustls::RootCertStore::empty();
     // Accept all parsable certs from the provided bundle
-    root_cert_store.add_parsable_certificates(ca_der);
+    let added = root_cert_store.add_parsable_certificates(ca_der);
+    if added.0 == 0 {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            format!(
+                "no valid CA certificates found in '{}'. Verify the file contains PEM-encoded CA cert(s)",
+                ca_path.display()
+            ),
+        )
+        .into());
+    }
 
     // Build rustls client config suitable for AWS IoT Core on port 8883
     let client_config = rustls::ClientConfig::builder()
         .with_root_certificates(root_cert_store)
-        .with_client_auth_cert(client_certs, private_key)?;
+        .with_client_auth_cert(client_certs, private_key)
+        .map_err(|e| {
+            io::Error::new(
+                io::ErrorKind::InvalidData,
+                format!(
+                    "failed to build TLS client config (check certificate/key pair): {}",
+                    e
+                ),
+            )
+        })?;
 
     Ok(TlsConfiguration::Rustls(Arc::new(client_config)))
 }
