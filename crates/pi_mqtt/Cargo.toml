@@ -1,0 +1,17 @@
+[package]
+name = "pi_mqtt"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+
+[dependencies]
+rumqttc.workspace = true
+tokio.workspace = true
+tokio-rustls.workspace = true
+rustls.workspace = true
+rustls-pemfile.workspace = true
+
+
+[[bin]]
+name = "pi_mqtt"
+path = "pi_mqtt.rs"

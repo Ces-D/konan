@@ -1,3 +1,5 @@
+use aws_config::Region;
+use aws_sdk_iotdataplane::Client;
 use serde::Serialize;
 
 #[derive(Debug, Serialize)]
@@ -12,7 +14,26 @@ impl Default for Message {
     }
 }
 
-/// Name of Konan MQTT topic
-pub fn topic() -> String {
-    std::env::var("KONAN_TOPIC").expect("KONAN_TOPIC must be set")
+pub struct IotConfigEnv {
+    pub endpoint: String,
+    pub topic: String,
+}
+impl IotConfigEnv {
+    pub fn new() -> Self {
+        let endpoint = std::env::var("IOT_ENDPOINT").expect("IOT_ENDPOINT not set");
+        let topic = std::env::var("IOT_TOPIC").expect("IOT_TOPIC not set");
+        Self { endpoint, topic }
+    }
+}
+
+pub async fn create_iot_client(endpoint: String) -> Client {
+    let shared_config = aws_config::from_env()
+        .region(Region::new("us-east-1"))
+        .load()
+        .await;
+    let config = aws_sdk_iotdataplane::config::Builder::from(&shared_config)
+        .endpoint_url(format!("https://{}", endpoint))
+        .build();
+    let client = aws_sdk_iotdataplane::Client::from_conf(config);
+    client
 }

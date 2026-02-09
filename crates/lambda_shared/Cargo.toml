@@ -9,3 +9,6 @@ path = "lambda_shared.rs"
 
 [dependencies]
 serde.workspace = true
+lambda_runtime.workspace = true
+aws-config.workspace = true
+aws-sdk-iotdataplane.workspace = true
