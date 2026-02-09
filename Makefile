@@ -2,6 +2,10 @@
 TARGET_ARCH = x86_64-unknown-linux-musl
 PREFIX = lambda_konan
 
+ifneq (,$(wildcard ./.env))
+    include .env
+    export
+endif
 # Adjust this if your workspace root is different from the Makefile location
 # In this config, we assume Makefile is at the root with Cargo.toml
 WORKSPACE_ROOT = .

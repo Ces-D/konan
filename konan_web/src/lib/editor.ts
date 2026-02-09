@@ -1,6 +1,6 @@
 import { type JSONContent } from '@tiptap/core';
 import { env } from '$env/dynamic/public';
-const PUBLIC_KONAN_SERVER_API = env.PUBLIC_KONAN_SERVER_API;
+const MESSAGE_ENDPOINT = env.PUBLIC_MESSAGE_ENDPOINT;
 
 export class EditorMessage {
 	private content: JSONContent;
@@ -20,7 +20,7 @@ export class EditorMessage {
 	}
 
 	async printEditorMessage() {
-		const url = new URL('/editor/message', PUBLIC_KONAN_SERVER_API);
+		const url = new URL(MESSAGE_ENDPOINT!);
 		const res = await fetch(url, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
