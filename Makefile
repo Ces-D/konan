@@ -12,7 +12,6 @@ WORKSPACE_ROOT = .
 
 build-all: clean
 	mkdir -p build
-	$(MAKE) build-web 
 	
 	@echo "Building Functions..."
 	$(MAKE) build-func FUNC=habits
@@ -31,11 +30,6 @@ build-func:
 	# 3. Zip it
 	cd build && zip $(FUNC).zip bootstrap && rm bootstrap
 
-# Build the Svelte app and place static output under build/site
-build-web:
-	@echo "Building web app.."
-	cd konan_web && pnpm build 
-	
 clean:
 	rm -rf build
 	cargo clean

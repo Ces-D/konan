@@ -22,24 +22,6 @@ locals {
     for handler in var.lambda_handlers :
     "command/${aws_iot_thing.raspberry_pi.name}/${handler}"
   ]
-  mime_types = {
-    ".html"  = "text/html"
-    ".css"   = "text/css"
-    ".js"    = "application/javascript"
-    ".json"  = "application/json"
-    ".png"   = "image/png"
-    ".jpg"   = "image/jpeg"
-    ".jpeg"  = "image/jpeg"
-    ".gif"   = "image/gif"
-    ".svg"   = "image/svg+xml"
-    ".ico"   = "image/x-icon"
-    ".woff"  = "font/woff"
-    ".woff2" = "font/woff2"
-  }
-  # Resolve the site directory robustly whether var.website_location is
-  # relative to the module or an absolute path.
-  site_dir     = join("/", [path.module, var.website_location])
-  s3_origin_id = "konanS3Origin"
 }
 
 data "aws_caller_identity" "current" {}
@@ -172,7 +154,7 @@ resource "aws_apigatewayv2_api" "http_api" {
   description   = "HTTP API for ${var.project_name} to invoke Lambdas"
 
   cors_configuration {
-    allow_origins = ["https://${aws_cloudfront_distribution.s3_distribution.domain_name}"]
+    allow_origins = var.api_gateway_allowed_origins
     allow_methods = ["POST", "OPTIONS"]
     allow_headers = ["Content-Type"]
     max_age       = 300
@@ -211,91 +193,4 @@ resource "aws_lambda_permission" "api_gw_invoke_funcs" {
   function_name = aws_lambda_function.pi_lambdas[each.value].function_name
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_apigatewayv2_api.http_api.execution_arn}/*/*"
-}
-
-# --- 4. Static Site Hosting (S3) ---
-resource "aws_s3_bucket" "website_bucket" {
-  bucket = "${var.project_name}-svelte-site"
-}
-
-resource "aws_s3_bucket_public_access_block" "website_policy" {
-  bucket                  = aws_s3_bucket.website_bucket.id
-  block_public_acls       = true
-  block_public_policy     = true
-  ignore_public_acls      = true
-  restrict_public_buckets = true
-}
-
-resource "aws_cloudfront_origin_access_control" "default" {
-  name                              = "${var.project_name}_s3_oac"
-  origin_access_control_origin_type = "s3"
-  signing_behavior                  = "always"
-  signing_protocol                  = "sigv4"
-}
-
-resource "aws_cloudfront_distribution" "s3_distribution" {
-  enabled             = true
-  is_ipv6_enabled     = true
-  default_root_object = "index.html"
-  origin {
-    domain_name              = aws_s3_bucket.website_bucket.bucket_regional_domain_name
-    origin_access_control_id = aws_cloudfront_origin_access_control.default.id
-    origin_id                = local.s3_origin_id
-  }
-  default_cache_behavior {
-    viewer_protocol_policy = "redirect-to-https"
-    allowed_methods        = ["GET", "HEAD"]
-    cached_methods         = ["GET", "HEAD"]
-    target_origin_id       = local.s3_origin_id
-    min_ttl                = 0
-    default_ttl            = 86400  # 24 hours
-    max_ttl                = 604800 # 7 days 
-    compress               = true
-    forwarded_values {
-      query_string = false
-      cookies {
-        forward = "none"
-      }
-    }
-  }
-  price_class = "PriceClass_100"
-  restrictions {
-    geo_restriction {
-      restriction_type = "whitelist"
-      locations        = ["US", "MX"]
-    }
-  }
-  viewer_certificate {
-    cloudfront_default_certificate = true
-  }
-}
-
-resource "aws_s3_bucket_policy" "svelte_site_policy" {
-  bucket     = aws_s3_bucket.website_bucket.id
-  depends_on = [aws_s3_bucket_public_access_block.website_policy]
-  policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Effect    = "Allow",
-        Principal = { Service = "cloudfront.amazonaws.com" },
-        Action    = "s3:GetObject",
-        Resource  = "${aws_s3_bucket.website_bucket.arn}/*"
-        Condition = {
-          StringEquals = {
-            "AWS:SourceARN" = aws_cloudfront_distribution.s3_distribution.arn
-          }
-        }
-      }
-    ]
-  })
-}
-
-resource "aws_s3_object" "svelte_files" {
-  for_each     = fileset(local.site_dir, "**")
-  bucket       = aws_s3_bucket.website_bucket.id
-  key          = each.value
-  source       = "${local.site_dir}/${each.value}"
-  etag         = filemd5("${local.site_dir}/${each.value}") # triggers update when contents change
-  content_type = lookup(local.mime_types, regex("\\.[^.]+$", each.value), "application/octet-stream")
 }

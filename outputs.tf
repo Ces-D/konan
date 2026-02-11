@@ -1,7 +1,3 @@
-output "s3_website_url" {
-  value = "https://${aws_cloudfront_distribution.s3_distribution.domain_name}"
-}
-
 output "pi_policy" {
   value = aws_iot_policy.pi_policy.arn
 }

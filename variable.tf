@@ -9,13 +9,17 @@ variable "pi_certificate_arn" {
 }
 
 variable "region" {
+  type    = string
   default = "us-east-1"
 }
 
 variable "lambda_handlers" {
+  type    = list(string)
   default = ["habits", "message", "outline"]
 }
 
-variable "website_location" {
-  default = "konan_web/build"
+variable "api_gateway_allowed_origins" {
+  description = "Allowed callers of api gateway"
+  type        = list(string)
+  default     = []
 }
