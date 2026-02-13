@@ -35,7 +35,7 @@ impl TipTapInterpreter {
             };
             self.builder.set_justify_content(justification);
         } else {
-            self.builder.set_justify_content(Justify::Center);
+            self.builder.set_justify_content(Justify::Left);
         }
         Ok(())
     }
@@ -77,9 +77,10 @@ impl TipTapInterpreter {
                     self.render_children(node)
                 }
                 NodeType::Paragraph => {
-                    self.builder.new_line();
                     self.handle_text_align_attribute(node)?;
-                    self.render_children(node)
+                    self.render_children(node)?;
+                    self.builder.new_line();
+                    Ok(())
                 }
                 NodeType::Text => {
                     self.handle_bold_mark(node)?;
@@ -92,7 +93,14 @@ impl TipTapInterpreter {
                     self.builder.new_line();
                     self.handle_text_align_attribute(node)?;
                     self.handle_heading_style(node)?;
-                    self.render_children(node)?;
+                    if let Some(children) = &node.content {
+                        // necessary to maintain reinforced heading style
+                        for child in children {
+                            if let Some(text) = &child.text {
+                                self.builder.add_content(text)?;
+                            }
+                        }
+                    }
                     self.builder.reset_styles();
                     self.builder.new_line();
                     Ok(())
