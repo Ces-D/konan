@@ -79,7 +79,6 @@ impl TipTapInterpreter {
                 NodeType::Paragraph => {
                     self.handle_text_align_attribute(node)?;
                     self.render_children(node)?;
-                    self.builder.new_line();
                     Ok(())
                 }
                 NodeType::Text => {
@@ -90,7 +89,6 @@ impl TipTapInterpreter {
                     Ok(())
                 }
                 NodeType::Heading => {
-                    self.builder.new_line();
                     self.handle_text_align_attribute(node)?;
                     self.handle_heading_style(node)?;
                     if let Some(children) = &node.content {
