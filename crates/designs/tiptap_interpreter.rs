@@ -90,6 +90,7 @@ impl TipTapInterpreter {
                 }
                 NodeType::Heading => {
                     self.builder.new_line();
+                    self.builder.reset_styles();
                     self.handle_text_align_attribute(node)?;
                     self.handle_heading_style(node)?;
                     if let Some(children) = &node.content {
@@ -101,7 +102,6 @@ impl TipTapInterpreter {
                         }
                     }
                     self.builder.new_line();
-                    self.builder.reset_styles();
                     Ok(())
                 }
                 NodeType::BulletList => {
@@ -112,12 +112,9 @@ impl TipTapInterpreter {
                             self.render_content(child)?;
                         }
                     }
-                    self.builder.new_line();
-                    self.builder.reset_styles();
                     Ok(())
                 }
                 NodeType::OrderedList => {
-                    self.builder.new_line();
                     let mut before = ListItemBefore::new_ordered(node.ordered_list_type());
                     if let Some(children) = &node.content {
                         for (index, child) in children.iter().enumerate() {
@@ -126,13 +123,10 @@ impl TipTapInterpreter {
                             self.render_content(child)?;
                         }
                     }
-                    self.builder.new_line();
-                    self.builder.reset_styles();
                     Ok(())
                 }
                 NodeType::ListItem => self.render_children(node),
                 NodeType::TaskList => {
-                    self.builder.new_line();
                     if let Some(children) = &node.content {
                         for child in children {
                             let before = TaskListBefore::new(node.is_checked().unwrap_or_default());
@@ -140,8 +134,6 @@ impl TipTapInterpreter {
                             self.render_content(child)?;
                         }
                     }
-                    self.builder.new_line();
-                    self.builder.reset_styles();
                     Ok(())
                 }
                 NodeType::TaskItem => self.render_children(node),
