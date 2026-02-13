@@ -1,7 +1,7 @@
 use clap::{Parser, Subcommand};
 use rongta::{
     RongtaPrinter, SupportedDriver,
-    elements::{FormatState, StyledChar, TextDecoration, TextSize},
+    elements::{FormatState, StyledChar, TextSize},
 };
 
 #[derive(Debug, Subcommand)]
@@ -34,10 +34,7 @@ pub async fn handle_art_command(args: ArtArgs, cut: bool) -> anyhow::Result<()> 
                     ch: c,
                     state: FormatState {
                         text_size: TextSize::ExtraLarge,
-                        text_decoration: TextDecoration {
-                            bold: true,
-                            ..Default::default()
-                        },
+                        is_bold: true,
                     },
                 })?;
             }

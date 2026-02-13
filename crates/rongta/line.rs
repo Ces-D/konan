@@ -77,7 +77,7 @@ impl Line {
 
 #[cfg(test)]
 mod tests {
-    use crate::elements::{FormatState, StyledChar, TextDecoration, TextSize};
+    use crate::elements::{FormatState, StyledChar, TextSize};
 
     use super::*;
     fn styled_char(ch: char) -> StyledChar {
@@ -92,7 +92,7 @@ mod tests {
             ch,
             state: FormatState {
                 text_size: TextSize::Large,
-                text_decoration: TextDecoration::default(),
+                is_bold: false,
             },
         }
     }
@@ -102,7 +102,7 @@ mod tests {
             ch,
             state: FormatState {
                 text_size: TextSize::ExtraLarge,
-                text_decoration: TextDecoration::default(),
+                is_bold: false,
             },
         }
     }

@@ -3,7 +3,7 @@ use anyhow::Result;
 use chrono::{DateTime, Datelike, Days, Duration, Utc};
 use rongta::{
     RongtaPrinter, SupportedDriver,
-    elements::{Justify, TextDecoration, TextSize},
+    elements::{Justify, TextSize},
 };
 
 pub struct HabitTrackerTemplateBuilder {
@@ -34,11 +34,7 @@ impl HabitTrackerTemplateBuilder {
     fn with_time_period(&mut self) -> Result<()> {
         self.builder.new_line();
         self.builder.set_justify_content(Justify::Center);
-        self.builder.set_text_decoration(TextDecoration {
-            bold: true,
-            underline: true,
-            ..Default::default()
-        });
+        self.builder.set_is_bold(true);
         let start_str = self.start_date.format("%B %d, %Y").to_string();
         let end_str = self.end_date.format("%B %d, %Y").to_string();
         self.builder
@@ -49,10 +45,7 @@ impl HabitTrackerTemplateBuilder {
 
     fn with_top(&mut self) -> Result<()> {
         self.builder.set_justify_content(Justify::Left);
-        self.builder.set_text_decoration(TextDecoration {
-            bold: true,
-            ..Default::default()
-        });
+        self.builder.set_is_bold(true);
         self.builder.set_text_size(TextSize::Medium);
         self.builder.add_content(&self.pattern.top)?;
         self.builder.new_line();
@@ -69,7 +62,7 @@ impl HabitTrackerTemplateBuilder {
 
     fn with_checkmarks(&mut self) -> Result<()> {
         self.builder.set_justify_content(Justify::Center);
-        self.builder.set_text_decoration(TextDecoration::default());
+        self.builder.set_is_bold(true);
         self.builder.set_text_size(TextSize::Medium);
 
         const SEGMENTS_PER_LINE: usize = 4; // Max segments that fit in 48 chars with spacing

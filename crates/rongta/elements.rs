@@ -1,5 +1,5 @@
 use anyhow::Result;
-use escpos::utils::{JustifyMode, UnderlineMode};
+use escpos::utils::JustifyMode;
 
 use crate::{cp437, printer::AnyPrinter};
 
@@ -38,30 +38,6 @@ impl ToPrintCommand for TextSize {
 }
 
 #[derive(Default, Clone, Copy, Debug, PartialEq)]
-pub struct TextDecoration {
-    pub bold: bool,
-    pub underline: bool,
-    pub italic: bool,
-}
-impl ToPrintCommand for TextDecoration {
-    fn to_print_command(&self, printer: &mut AnyPrinter) -> Result<()> {
-        match self.bold {
-            true => printer.bold(true)?,
-            false => printer.bold(false)?,
-        };
-        match self.underline {
-            true => printer.underline(UnderlineMode::Single)?,
-            false => printer.underline(UnderlineMode::None)?,
-        };
-        match self.italic {
-            true => printer.underline(UnderlineMode::Single)?,
-            false => printer.underline(UnderlineMode::None)?,
-        };
-        Ok(())
-    }
-}
-
-#[derive(Default, Clone, Copy, Debug, PartialEq)]
 pub enum Justify {
     #[default]
     Left,
@@ -82,7 +58,7 @@ impl ToPrintCommand for Justify {
 #[derive(Clone, Copy, Debug, PartialEq, Default)]
 pub struct FormatState {
     pub text_size: TextSize,
-    pub text_decoration: TextDecoration,
+    pub is_bold: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -96,7 +72,7 @@ impl ToPrintCommand for StyledChar {
         let normalized_ch = cp437::normalize_char(self.ch).unwrap_or(self.ch);
         let ascii_content = cp437::cp437_char_only(normalized_ch)?;
         self.state.text_size.to_print_command(printer)?;
-        self.state.text_decoration.to_print_command(printer)?;
+        printer.bold(self.state.is_bold)?;
         printer.write(&ascii_content.to_string())?;
         Ok(())
     }
@@ -130,40 +106,6 @@ mod tests {
         }
     }
 
-    mod text_decoration {
-        use super::*;
-
-        #[test]
-        fn default_has_no_decorations() {
-            let decoration = TextDecoration::default();
-            assert!(!decoration.bold);
-            assert!(!decoration.underline);
-            assert!(!decoration.italic);
-        }
-
-        #[test]
-        fn can_set_bold() {
-            let decoration = TextDecoration {
-                bold: true,
-                ..Default::default()
-            };
-            assert!(decoration.bold);
-            assert!(!decoration.underline);
-        }
-
-        #[test]
-        fn can_set_multiple_decorations() {
-            let decoration = TextDecoration {
-                bold: true,
-                underline: true,
-                italic: false,
-            };
-            assert!(decoration.bold);
-            assert!(decoration.underline);
-            assert!(!decoration.italic);
-        }
-    }
-
     mod justify {
         use super::*;
 
@@ -187,21 +129,17 @@ mod tests {
         fn default_has_medium_size_and_no_decoration() {
             let state = FormatState::default();
             assert_eq!(state.text_size, TextSize::Medium);
-            assert_eq!(state.text_decoration, TextDecoration::default());
+            assert_eq!(state.is_bold, false);
         }
 
         #[test]
         fn can_construct_with_custom_values() {
             let state = FormatState {
                 text_size: TextSize::Large,
-                text_decoration: TextDecoration {
-                    bold: true,
-                    underline: false,
-                    italic: false,
-                },
+                is_bold: true,
             };
             assert_eq!(state.text_size, TextSize::Large);
-            assert!(state.text_decoration.bold);
+            assert!(state.is_bold);
         }
     }
 
@@ -221,16 +159,11 @@ mod tests {
         fn preserves_format_state() {
             let state = FormatState {
                 text_size: TextSize::ExtraLarge,
-                text_decoration: TextDecoration {
-                    bold: true,
-                    underline: true,
-                    italic: false,
-                },
+                is_bold: true,
             };
             let styled = StyledChar { ch: 'X', state };
             assert_eq!(styled.state.text_size, TextSize::ExtraLarge);
-            assert!(styled.state.text_decoration.bold);
-            assert!(styled.state.text_decoration.underline);
+            assert!(styled.state.is_bold);
         }
 
         #[test]
@@ -239,7 +172,7 @@ mod tests {
                 ch: 'Z',
                 state: FormatState {
                     text_size: TextSize::Large,
-                    text_decoration: TextDecoration::default(),
+                    is_bold: true,
                 },
             };
             let cloned = styled.clone();

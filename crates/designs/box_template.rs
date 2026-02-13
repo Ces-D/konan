@@ -3,7 +3,7 @@ use anyhow::Result;
 use chrono::{DateTime, Local};
 use rongta::{
     RongtaPrinter, SupportedDriver,
-    elements::{Justify, TextDecoration, TextSize},
+    elements::{Justify, TextSize},
 };
 
 pub struct BoxTemplateBuilder {
@@ -36,11 +36,7 @@ impl BoxTemplateBuilder {
     fn with_date_banner(&mut self) -> Result<()> {
         self.builder.reset_styles();
         self.builder.set_justify_content(Justify::Center);
-        self.builder.set_text_decoration(TextDecoration {
-            bold: true,
-            underline: true,
-            ..Default::default()
-        });
+        self.builder.set_is_bold(true);
 
         match self.date {
             Some(d) => {
@@ -62,10 +58,7 @@ impl BoxTemplateBuilder {
         match &self.banner {
             Some(b) => {
                 self.builder.set_justify_content(Justify::Center);
-                self.builder.set_text_decoration(TextDecoration {
-                    bold: true,
-                    ..Default::default()
-                });
+                self.builder.set_is_bold(true);
                 self.builder.set_text_size(TextSize::Large);
                 self.builder.add_content(b)?;
                 self.builder.new_line();
@@ -88,10 +81,7 @@ impl BoxTemplateBuilder {
 
     fn with_rows(&mut self) -> Result<()> {
         self.builder.reset_styles();
-        self.builder.set_text_decoration(TextDecoration {
-            bold: true,
-            ..Default::default()
-        });
+        self.builder.set_is_bold(true);
         for i in 0..self.rows {
             if self.lined {
                 if i % 2 == 0 {
@@ -112,10 +102,7 @@ impl BoxTemplateBuilder {
 
     fn with_top(&mut self) -> Result<()> {
         self.builder.reset_styles();
-        self.builder.set_text_decoration(TextDecoration {
-            bold: true,
-            ..Default::default()
-        });
+        self.builder.set_is_bold(true);
         self.builder.add_content(&self.pattern.top)?;
         self.builder.new_line();
         Ok(())
@@ -123,10 +110,7 @@ impl BoxTemplateBuilder {
 
     fn with_bottom(&mut self) -> Result<()> {
         self.builder.reset_styles();
-        self.builder.set_text_decoration(TextDecoration {
-            bold: true,
-            ..Default::default()
-        });
+        self.builder.set_is_bold(true);
         self.builder.add_content(&self.pattern.bottom)?;
         self.builder.new_line();
         Ok(())

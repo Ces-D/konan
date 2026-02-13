@@ -1,12 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-/// Node types supported by the Tiptap editor configuration.
-///
-/// These correspond to the extensions enabled in Editor.svelte:
-/// - StarterKit: doc, paragraph, text, heading, blockquote, bulletList, orderedList,
-///   listItem, codeBlock, hardBreak, horizontalRule
-/// - TaskList/TaskItem: taskList, taskItem
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum NodeType {
@@ -16,10 +10,8 @@ pub enum NodeType {
     Paragraph,
     /// Inline text content
     Text,
-    /// Heading levels 1-6
+    /// Heading levels 1-4
     Heading,
-    /// A blockquote
-    Blockquote,
     /// An unordered (bullet) list
     BulletList,
     /// An ordered (numbered) list
@@ -36,9 +28,6 @@ pub enum NodeType {
     TaskList,
     /// An item within a taskList
     TaskItem,
-    /// Unknown or custom node type
-    #[serde(untagged)]
-    Other(String),
 }
 
 /// Mark types supported by the Tiptap editor configuration.
@@ -50,13 +39,8 @@ pub enum NodeType {
 pub enum MarkType {
     /// Bold text
     Bold,
-    /// Strikethrough text
-    Strike,
     /// Inline code
     Code,
-    /// Unknown or custom mark type
-    #[serde(untagged)]
-    Other(String),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
@@ -97,6 +81,14 @@ impl From<&str> for OrderedListType {
     }
 }
 
+/// A mark applied to inline content (e.g., bold, italic, link).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Mark {
+    /// The type of the mark (e.g., Bold, Italic, Code)
+    #[serde(rename = "type")]
+    pub mark_type: MarkType,
+}
+
 /// A Tiptap JSON node or document. Tiptap JSON is the standard format for
 /// storing and manipulating Tiptap content. It is equivalent to the JSON
 /// representation of a ProseMirror node.
@@ -128,10 +120,6 @@ pub struct JSONContent {
     /// Text nodes cannot have children, but they can have marks.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub text: Option<String>,
-
-    /// Additional arbitrary properties that may be present on the node.
-    #[serde(flatten)]
-    pub extra: HashMap<String, serde_json::Value>,
 }
 
 impl JSONContent {
@@ -182,12 +170,4 @@ impl JSONContent {
     pub fn is_checked(&self) -> Option<bool> {
         self.attrs.as_ref()?.get("checked")?.as_bool()
     }
-}
-
-/// A mark applied to inline content (e.g., bold, italic, link).
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct Mark {
-    /// The type of the mark (e.g., Bold, Italic, Code)
-    #[serde(rename = "type")]
-    pub mark_type: MarkType,
 }

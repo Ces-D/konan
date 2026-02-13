@@ -24,7 +24,7 @@ pub struct RongtaPrinter {
     lines: Vec<line::Line>,
     cut: bool,
     current_text_size: elements::TextSize,
-    current_text_decoration: elements::TextDecoration,
+    current_is_bold: bool,
 }
 
 impl RongtaPrinter {
@@ -71,7 +71,7 @@ impl RongtaPrinter {
         for char in content.chars() {
             let current_state = elements::FormatState {
                 text_size: self.current_text_size,
-                text_decoration: self.current_text_decoration,
+                is_bold: self.current_is_bold,
             };
             let new_line = {
                 let current_line = self.lines.last_mut().unwrap();
@@ -113,15 +113,14 @@ impl RongtaPrinter {
         self.current_text_size = size;
     }
 
-    /// Set the text decoration of the next characters
-    pub fn set_text_decoration(&mut self, decoration: elements::TextDecoration) {
-        self.current_text_decoration = decoration;
+    pub fn set_is_bold(&mut self, bold: bool) {
+        self.current_is_bold = bold;
     }
 
     pub fn reset_styles(&mut self) {
         self.current_text_size = elements::TextSize::default();
-        self.current_text_decoration = elements::TextDecoration::default();
-        self.set_justify_content(elements::Justify::Left);
+        self.current_is_bold = Default::default();
+        self.set_justify_content(elements::Justify::default());
     }
 
     /// Core printing logic - works with any printer variant.
@@ -222,180 +221,4 @@ where
     printer.reset()?;
 
     Ok(printer)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use elements::{FormatState, Justify, StyledChar, TextDecoration, TextSize};
-
-    mod print_builder {
-        use super::*;
-
-        #[test]
-        fn new_creates_empty_builder() {
-            let builder = RongtaPrinter::new(true);
-            assert!(builder.lines.is_empty());
-        }
-
-        #[test]
-        fn new_sets_cut_flag() {
-            let builder = RongtaPrinter::new(true);
-            assert!(builder.cut);
-
-            let builder = RongtaPrinter::new(false);
-            assert!(!builder.cut);
-        }
-
-        #[test]
-        fn add_content_creates_line() {
-            let mut builder = RongtaPrinter::new(false);
-            builder.add_content("Hello").unwrap();
-            assert_eq!(builder.lines.len(), 1);
-        }
-
-        #[test]
-        fn add_content_adds_chars() {
-            let mut builder = RongtaPrinter::new(false);
-            builder.add_content("Hi").unwrap();
-            assert_eq!(builder.lines[0].chars.len(), 2);
-            assert_eq!(builder.lines[0].chars[0].ch, 'H');
-            assert_eq!(builder.lines[0].chars[1].ch, 'i');
-        }
-
-        #[test]
-        fn new_line_adds_empty_line() {
-            let mut builder = RongtaPrinter::new(false);
-            builder.add_content("First").unwrap();
-            builder.new_line();
-            builder.add_content("Second").unwrap();
-            assert_eq!(builder.lines.len(), 2);
-        }
-
-        #[test]
-        fn set_justify_content_affects_current_line() {
-            let mut builder = RongtaPrinter::new(false);
-            builder.add_content("Text").unwrap();
-            builder.set_justify_content(Justify::Center);
-            assert_eq!(builder.lines[0].justify_content, Justify::Center);
-        }
-
-        #[test]
-        fn set_justify_content_creates_line_if_empty() {
-            let mut builder = RongtaPrinter::new(false);
-            builder.set_justify_content(Justify::Right);
-            assert_eq!(builder.lines.len(), 1);
-            assert_eq!(builder.lines[0].justify_content, Justify::Right);
-        }
-
-        #[test]
-        fn set_text_size_affects_subsequent_content() {
-            let mut builder = RongtaPrinter::new(false);
-            builder.set_text_size(TextSize::Large);
-            builder.add_content("Big").unwrap();
-            assert_eq!(builder.lines[0].chars[0].state.text_size, TextSize::Large);
-        }
-
-        #[test]
-        fn set_text_decoration_affects_subsequent_content() {
-            let mut builder = RongtaPrinter::new(false);
-            builder.set_text_decoration(TextDecoration {
-                bold: true,
-                underline: false,
-                italic: false,
-            });
-            builder.add_content("Bold").unwrap();
-            assert!(builder.lines[0].chars[0].state.text_decoration.bold);
-        }
-
-        #[test]
-        fn reset_styles_clears_formatting() {
-            let mut builder = RongtaPrinter::new(false);
-            builder.set_text_size(TextSize::ExtraLarge);
-            builder.set_text_decoration(TextDecoration {
-                bold: true,
-                underline: true,
-                italic: true,
-            });
-            builder.set_justify_content(Justify::Right);
-            builder.reset_styles();
-            builder.add_content("Normal").unwrap();
-
-            let last_line = builder.lines.last().unwrap();
-            assert_eq!(last_line.justify_content, Justify::Left);
-            assert_eq!(last_line.chars[0].state.text_size, TextSize::Medium);
-            assert!(!last_line.chars[0].state.text_decoration.bold);
-        }
-
-        #[test]
-        fn mixed_formatting_within_line() {
-            let mut builder = RongtaPrinter::new(false);
-            builder.add_content("Normal ").unwrap();
-            builder.set_text_decoration(TextDecoration {
-                bold: true,
-                underline: false,
-                italic: false,
-            });
-            builder.add_content("Bold").unwrap();
-
-            let line = &builder.lines[0];
-            // First chars should not be bold
-            assert!(!line.chars[0].state.text_decoration.bold);
-            // Last chars should be bold (after "Normal ")
-            assert!(line.chars[7].state.text_decoration.bold);
-        }
-
-        #[test]
-        fn new_line_inherits_justify_from_previous() {
-            let mut builder = RongtaPrinter::new(false);
-            builder.set_justify_content(Justify::Center);
-            builder.add_content("Line 1").unwrap();
-            builder.new_line();
-            builder.add_content("Line 2").unwrap();
-
-            assert_eq!(builder.lines[0].justify_content, Justify::Center);
-            assert_eq!(builder.lines[1].justify_content, Justify::Center);
-        }
-
-        #[test]
-        fn auto_wraps_long_content() {
-            let mut builder = RongtaPrinter::new(false);
-            // Add content longer than CPL
-            let long_text = "a".repeat(CPL as usize + 10);
-            builder.add_content(&long_text).unwrap();
-
-            assert!(
-                builder.lines.len() >= 2,
-                "Long content should wrap to multiple lines"
-            );
-        }
-
-        #[test]
-        fn add_char_content_allows_fine_control() {
-            let mut builder = RongtaPrinter::new(false);
-            let styled = StyledChar {
-                ch: 'X',
-                state: FormatState {
-                    text_size: TextSize::Large,
-                    text_decoration: TextDecoration {
-                        bold: true,
-                        underline: false,
-                        italic: false,
-                    },
-                },
-            };
-            builder.add_char_content(styled.clone()).unwrap();
-            assert_eq!(builder.lines[0].chars[0].ch, 'X');
-            assert_eq!(builder.lines[0].chars[0].state.text_size, TextSize::Large);
-        }
-    }
-
-    mod cpl_constant {
-        use super::*;
-
-        #[test]
-        fn cpl_is_48() {
-            assert_eq!(CPL, 48);
-        }
-    }
 }

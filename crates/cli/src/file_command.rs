@@ -1,18 +1,13 @@
 use anyhow::bail;
 use clap::Parser;
 use log::{info, trace};
-use rongta::{
-    RongtaPrinter, SupportedDriver,
-    elements::{Justify, TextDecoration},
-};
+use rongta::{RongtaPrinter, SupportedDriver, elements::Justify};
 use std::{
     ffi::OsStr,
     fs::File,
     io::{self, BufRead, BufReader},
     path::Path,
 };
-
-use designs::markdown_adapter::MarkdownFileAdapter;
 
 /// Reads a file line by line from a given path using an iterator.
 /// This is memory-efficient as it doesn't load the whole file into memory.
@@ -53,8 +48,8 @@ pub async fn handle_file_command(args: FileArgs, cut: bool) -> anyhow::Result<()
         info!("Rendering markdown file with formatting");
         let content = std::fs::read_to_string(&args.path)?;
         let builder = RongtaPrinter::new(cut);
-        let mut renderer = MarkdownFileAdapter::new(builder);
-        renderer.print(&content, pagination, SupportedDriver::Console)?;
+        // let mut renderer = MarkdownFileAdapter::new(builder);
+        // renderer.print(&content, pagination, SupportedDriver::Console)?;
     } else {
         // Plain text rendering path (existing logic)
         let mut builder = RongtaPrinter::new(cut);
@@ -64,10 +59,7 @@ pub async fn handle_file_command(args: FileArgs, cut: bool) -> anyhow::Result<()
             let line = line?;
             trace!("Reading line: {}", line);
             builder.set_justify_content(Justify::Left);
-            builder.set_text_decoration(TextDecoration {
-                bold: true,
-                ..Default::default()
-            });
+            builder.set_is_bold(true);
             builder.add_content(&line)?;
             builder.new_line();
         }

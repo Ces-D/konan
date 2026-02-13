@@ -1,8 +1,7 @@
 pub mod box_template;
 pub mod habit_tracker_template;
-pub mod markdown_adapter;
 mod render;
-pub mod tiptap_adapter;
+pub mod tiptap_interpreter;
 
 use anyhow::Context;
 use rand::seq::IndexedRandom;

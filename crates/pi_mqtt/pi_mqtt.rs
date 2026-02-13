@@ -2,7 +2,7 @@ use anyhow::Result;
 use chrono::{DateTime, Utc};
 use designs::box_template::BoxTemplateBuilder;
 use designs::habit_tracker_template::HabitTrackerTemplateBuilder;
-use designs::tiptap_adapter::TipTapJsonAdapter;
+use designs::tiptap_interpreter::TipTapInterpreter;
 use rongta::RongtaPrinter;
 use rumqttc::{AsyncClient, MqttOptions, QoS, TlsConfiguration, Transport};
 use rustls::pki_types::{CertificateDer, PrivateKeyDer, PrivatePkcs1KeyDer, PrivatePkcs8KeyDer};
@@ -103,7 +103,7 @@ async fn main() -> Result<()> {
                         );
                         template.print(driver)?;
                     } else if msg.topic == "command/konan_pi/message" {
-                        let template = TipTapJsonAdapter::new(builder);
+                        let template = TipTapInterpreter::new(builder);
                         let params: PrintableMessage = serde_json::from_str(&payload).unwrap();
                         template.print(params.content, params.rows, driver)?;
                     }

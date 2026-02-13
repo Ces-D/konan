@@ -1,33 +1,24 @@
 use anyhow::Result;
 use rongta::{
     RongtaPrinter, ToBuilderCommand,
-    elements::{FormatState, Justify, TextDecoration, TextSize},
+    elements::{FormatState, Justify, TextSize},
 };
 use tiptap::OrderedListType;
 
 /// Style the ListItem ::before pseudoelement
 pub struct ListItemBefore {
+    ordinal: Option<OrderedListType>,
     content: String,
     format: FormatState,
 }
 impl ListItemBefore {
-    pub fn new_ordered(start: Option<u64>, ordinal: Option<OrderedListType>) -> Self {
-        let start = start.unwrap_or(1);
-        let value = match ordinal.unwrap_or_default() {
-            OrderedListType::LowerCaseLetter => Self::letter_for_index(start - 1, false),
-            OrderedListType::UpperCaseLetter => Self::letter_for_index(start - 1, true),
-            OrderedListType::LowerCaseRoman => Self::roman_numeral(start, false),
-            OrderedListType::UpperCaseRoman => Self::roman_numeral(start, true),
-            OrderedListType::Number => start.to_string(),
-        };
+    pub fn new_ordered(ordinal: Option<OrderedListType>) -> Self {
         Self {
-            content: format!("{}. ", value),
+            content: "".to_string(),
+            ordinal,
             format: FormatState {
                 text_size: TextSize::Medium,
-                text_decoration: TextDecoration {
-                    bold: true,
-                    ..Default::default()
-                },
+                is_bold: true,
             },
         }
     }
@@ -36,12 +27,23 @@ impl ListItemBefore {
             content: "∙ ".to_string(),
             format: FormatState {
                 text_size: TextSize::Medium,
-                text_decoration: TextDecoration {
-                    bold: true,
-                    ..Default::default()
-                },
+                is_bold: true,
             },
+            ordinal: None,
         }
+    }
+    fn ordered_before_content(index: u64, ordinal: &Option<OrderedListType>) -> String {
+        let value = match ordinal.clone().unwrap_or_default() {
+            OrderedListType::LowerCaseLetter => Self::letter_for_index(index, false),
+            OrderedListType::UpperCaseLetter => Self::letter_for_index(index, true),
+            OrderedListType::LowerCaseRoman => Self::roman_numeral(index, false),
+            OrderedListType::UpperCaseRoman => Self::roman_numeral(index, true),
+            OrderedListType::Number => index.to_string(),
+        };
+        format!("{}. ", value)
+    }
+    pub fn next_index(&mut self, index: u64) {
+        self.content = Self::ordered_before_content(index, &self.ordinal);
     }
     /// Returns the alphabetic label for a 1-based index.
     /// Examples: 1 -> "a"/"A", 26 -> "z"/"Z", 27 -> "aa"/"AA".
@@ -87,7 +89,7 @@ impl ToBuilderCommand for ListItemBefore {
         builder.reset_styles();
         builder.set_justify_content(Justify::Left);
         builder.set_text_size(self.format.text_size);
-        builder.set_text_decoration(self.format.text_decoration);
+        builder.set_is_bold(self.format.is_bold);
         builder.add_content(&self.content)
     }
 }
@@ -107,10 +109,7 @@ impl TaskListBefore {
             content,
             format: FormatState {
                 text_size: TextSize::Medium,
-                text_decoration: TextDecoration {
-                    bold: true,
-                    ..Default::default()
-                },
+                is_bold: true,
             },
         }
     }
@@ -120,145 +119,8 @@ impl ToBuilderCommand for TaskListBefore {
         builder.new_line();
         builder.reset_styles();
         builder.set_text_size(self.format.text_size);
-        builder.set_text_decoration(self.format.text_decoration);
+        builder.set_is_bold(self.format.is_bold);
         builder.add_content(&self.content)
-    }
-}
-/// Renders all non-heading text
-pub struct Text {
-    content: String,
-    format: FormatState,
-}
-impl Text {
-    pub fn new(text: String, text_size: Option<TextSize>, bold: Option<bool>) -> Self {
-        Self {
-            content: text,
-            format: FormatState {
-                text_size: text_size.unwrap_or_default(),
-                text_decoration: TextDecoration {
-                    bold: bold.unwrap_or_default(),
-                    ..Default::default()
-                },
-            },
-        }
-    }
-}
-impl ToBuilderCommand for Text {
-    fn to_builder_command(&self, builder: &mut RongtaPrinter) -> Result<()> {
-        builder.set_text_size(self.format.text_size);
-        builder.set_text_decoration(self.format.text_decoration);
-        builder.add_content(&self.content)
-    }
-}
-
-pub struct Heading {
-    content: String,
-    format: FormatState,
-}
-impl Heading {
-    pub fn new(text: String, level: Option<u8>) -> Self {
-        let (text_size, text_decoration) = Self::heading_style(level.unwrap_or(3));
-        Self {
-            content: text.trim().to_string(),
-            format: FormatState {
-                text_size,
-                text_decoration,
-            },
-        }
-    }
-    fn heading_style(level: u8) -> (TextSize, TextDecoration) {
-        match level {
-            1 => (TextSize::ExtraLarge, TextDecoration::default()),
-            2 => (
-                TextSize::Large,
-                TextDecoration {
-                    bold: true,
-                    ..Default::default()
-                },
-            ),
-            3 => (TextSize::Large, TextDecoration::default()),
-            _ => (
-                TextSize::Medium,
-                TextDecoration {
-                    bold: true,
-                    ..Default::default()
-                },
-            ),
-        }
-    }
-}
-impl ToBuilderCommand for Heading {
-    fn to_builder_command(&self, builder: &mut RongtaPrinter) -> Result<()> {
-        builder.new_line();
-        builder.reset_styles();
-        builder.set_text_size(self.format.text_size);
-        builder.set_text_decoration(self.format.text_decoration);
-        builder.set_justify_content(Justify::Center);
-        builder.add_content(&self.content)?;
-        builder.new_line();
-        Ok(())
-    }
-}
-
-pub struct BlockQuote {
-    content: String,
-    format: FormatState,
-}
-impl BlockQuote {
-    pub fn new(text: String) -> Self {
-        Self {
-            content: text,
-            format: FormatState {
-                text_size: TextSize::Medium,
-                text_decoration: TextDecoration {
-                    bold: true,
-                    ..Default::default()
-                },
-            },
-        }
-    }
-}
-impl ToBuilderCommand for BlockQuote {
-    fn to_builder_command(&self, builder: &mut RongtaPrinter) -> Result<()> {
-        builder.new_line();
-        builder.reset_styles();
-        builder.set_text_size(self.format.text_size);
-        builder.set_text_decoration(self.format.text_decoration);
-        builder.set_justify_content(Justify::Center);
-        builder.add_content(&self.content)?;
-        builder.new_line();
-        Ok(())
-    }
-}
-
-pub struct CodeBlock {
-    content: String,
-    format: FormatState,
-}
-impl CodeBlock {
-    pub fn new(text: String) -> Self {
-        Self {
-            content: text,
-            format: FormatState {
-                text_size: TextSize::Medium,
-                text_decoration: TextDecoration {
-                    bold: true,
-                    ..Default::default()
-                },
-            },
-        }
-    }
-}
-impl ToBuilderCommand for CodeBlock {
-    fn to_builder_command(&self, builder: &mut RongtaPrinter) -> Result<()> {
-        builder.new_line();
-        builder.reset_styles();
-        builder.set_text_size(self.format.text_size);
-        builder.set_text_decoration(self.format.text_decoration);
-        builder.set_justify_content(Justify::Left);
-        builder.add_content(&self.content)?;
-        builder.new_line();
-        Ok(())
     }
 }
 
@@ -272,10 +134,7 @@ impl HorizontalRule {
             content: "-".repeat(12),
             format: FormatState {
                 text_size: TextSize::Large,
-                text_decoration: TextDecoration {
-                    bold: true,
-                    ..Default::default()
-                },
+                is_bold: true,
             },
         }
     }
@@ -285,7 +144,7 @@ impl ToBuilderCommand for HorizontalRule {
         builder.new_line();
         builder.reset_styles();
         builder.set_text_size(self.format.text_size);
-        builder.set_text_decoration(self.format.text_decoration);
+        builder.set_is_bold(self.format.is_bold);
         builder.set_justify_content(Justify::Center);
         builder.add_content(&self.content)?;
         builder.new_line();
