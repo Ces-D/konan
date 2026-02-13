@@ -101,7 +101,7 @@ pub struct TaskListBefore {
 impl TaskListBefore {
     pub fn new(checked: bool) -> Self {
         let content = if checked {
-            "[■] ".to_string()
+            "[x] ".to_string()
         } else {
             "[ ] ".to_string()
         };

@@ -28,6 +28,7 @@ impl TipTapInterpreter {
 
     fn handle_text_align_attribute(&mut self, node: &JSONContent) -> Result<()> {
         if let Some(alignment) = node.text_align() {
+            log::trace!("Found alignment");
             let justification = match alignment {
                 tiptap::TextAlign::Left => Justify::Left,
                 tiptap::TextAlign::Center => Justify::Center,
