@@ -141,11 +141,13 @@ impl JSONContent {
     }
 
     pub fn text_align(&self) -> Option<TextAlign> {
-        self.attrs
-            .as_ref()?
-            .get("textAlign")?
-            .as_str()
-            .map(|v| TextAlign::from(v))
+        if self.node_type != Some(NodeType::Paragraph) || self.node_type != Some(NodeType::Heading)
+        {
+            return None;
+        }
+        let align = self.attrs.as_ref()?.get("textAlign")?;
+        log::trace!("Found alignment: {:?}", align);
+        align.as_str().map(|v| TextAlign::from(v))
     }
 
     pub fn heading_level(&self) -> Option<u8> {

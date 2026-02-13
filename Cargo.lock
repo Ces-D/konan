@@ -2866,6 +2866,7 @@ name = "tiptap"
 version = "0.3.5"
 dependencies = [
  "anyhow",
+ "log",
  "serde",
  "serde_json",
 ]

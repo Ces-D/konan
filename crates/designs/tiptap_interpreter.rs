@@ -100,12 +100,11 @@ impl TipTapInterpreter {
                             }
                         }
                     }
-                    self.builder.reset_styles();
                     self.builder.new_line();
+                    self.builder.reset_styles();
                     Ok(())
                 }
                 NodeType::BulletList => {
-                    self.builder.new_line();
                     let before = ListItemBefore::new_unordered();
                     if let Some(children) = &node.content {
                         for child in children {
@@ -113,6 +112,7 @@ impl TipTapInterpreter {
                             self.render_content(child)?;
                         }
                     }
+                    self.builder.new_line();
                     self.builder.reset_styles();
                     Ok(())
                 }
@@ -126,6 +126,7 @@ impl TipTapInterpreter {
                             self.render_content(child)?;
                         }
                     }
+                    self.builder.new_line();
                     self.builder.reset_styles();
                     Ok(())
                 }
@@ -139,16 +140,15 @@ impl TipTapInterpreter {
                             self.render_content(child)?;
                         }
                     }
+                    self.builder.new_line();
                     self.builder.reset_styles();
                     Ok(())
                 }
                 NodeType::TaskItem => self.render_children(node),
                 NodeType::CodeBlock => {
                     self.builder.new_line();
-                    self.builder.new_line();
                     self.builder.set_is_bold(true);
                     self.render_children(node)?;
-                    self.builder.new_line();
                     self.builder.new_line();
                     self.builder.reset_styles();
                     Ok(())
