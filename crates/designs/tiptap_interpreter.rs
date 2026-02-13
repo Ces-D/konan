@@ -129,7 +129,7 @@ impl TipTapInterpreter {
                     self.builder.reset_styles();
                     Ok(())
                 }
-                NodeType::TaskItem => todo!(),
+                NodeType::TaskItem => self.render_children(node),
                 NodeType::CodeBlock => {
                     self.builder.new_line();
                     self.builder.new_line();
