@@ -77,6 +77,7 @@ impl TipTapInterpreter {
                     self.render_children(node)
                 }
                 NodeType::Paragraph => {
+                    self.builder.new_line();
                     self.handle_text_align_attribute(node)?;
                     self.render_children(node)
                 }
@@ -88,13 +89,16 @@ impl TipTapInterpreter {
                     Ok(())
                 }
                 NodeType::Heading => {
+                    self.builder.new_line();
                     self.handle_text_align_attribute(node)?;
                     self.handle_heading_style(node)?;
                     self.render_children(node)?;
                     self.builder.reset_styles();
+                    self.builder.new_line();
                     Ok(())
                 }
                 NodeType::BulletList => {
+                    self.builder.new_line();
                     let before = ListItemBefore::new_unordered();
                     if let Some(children) = &node.content {
                         for child in children {
@@ -106,6 +110,7 @@ impl TipTapInterpreter {
                     Ok(())
                 }
                 NodeType::OrderedList => {
+                    self.builder.new_line();
                     let mut before = ListItemBefore::new_ordered(node.ordered_list_type());
                     if let Some(children) = &node.content {
                         for (index, child) in children.iter().enumerate() {
@@ -119,6 +124,7 @@ impl TipTapInterpreter {
                 }
                 NodeType::ListItem => self.render_children(node),
                 NodeType::TaskList => {
+                    self.builder.new_line();
                     if let Some(children) = &node.content {
                         for child in children {
                             let before = TaskListBefore::new(node.is_checked().unwrap_or_default());
