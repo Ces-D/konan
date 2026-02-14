@@ -123,12 +123,47 @@ pub struct JSONContent {
 }
 
 impl JSONContent {
+    /// Trace helper: logs what attribute key is being searched and what attrs exist
+    fn trace_attr_search(&self, key: &str) {
+        match &self.attrs {
+            Some(attrs) => {
+                let keys: Vec<&str> = attrs.keys().map(|k| k.as_str()).collect();
+                log::trace!(
+                    "JSONContent: searching for attr '{}' on node {:?}; available attrs: {:?}",
+                    key,
+                    self.node_type,
+                    keys
+                );
+            }
+            None => {
+                log::trace!(
+                    "JSONContent: searching for attr '{}' on node {:?}; no attrs present",
+                    key,
+                    self.node_type
+                );
+            }
+        }
+    }
+
+    /// Trace helper: logs when an attribute has been found
+    fn trace_attr_found(&self, key: &str, value: &serde_json::Value) {
+        log::trace!(
+            "JSONContent: found attr '{}' = {:?} on node {:?}",
+            key,
+            value,
+            self.node_type
+        );
+    }
+
     /// Returns the `language` attribute for `codeBlock` nodes.
     pub fn code_block_language(&self) -> Option<&str> {
+        self.trace_attr_search("language");
         if self.node_type != Some(NodeType::CodeBlock) {
             return None;
         }
-        self.attrs.as_ref()?.get("language")?.as_str()
+        let v = self.attrs.as_ref()?.get("language")?;
+        self.trace_attr_found("language", v);
+        v.as_str()
     }
 
     pub fn is_bold(&self) -> bool {
@@ -141,35 +176,45 @@ impl JSONContent {
     }
 
     pub fn text_align(&self) -> Option<TextAlign> {
-        if self.node_type != Some(NodeType::Paragraph) || self.node_type != Some(NodeType::Heading)
+        self.trace_attr_search("textAlign");
+        // Only Paragraph or Heading support textAlign
+        if self.node_type != Some(NodeType::Paragraph) && self.node_type != Some(NodeType::Heading)
         {
             return None;
         }
         let align = self.attrs.as_ref()?.get("textAlign")?;
-        log::trace!("Found alignment: {:?}", align);
+        self.trace_attr_found("textAlign", align);
         align.as_str().map(|v| TextAlign::from(v))
     }
 
     pub fn heading_level(&self) -> Option<u8> {
-        self.attrs.as_ref()?.get("level")?.as_u64().map(|v| v as u8)
+        self.trace_attr_search("level");
+        let v = self.attrs.as_ref()?.get("level")?;
+        self.trace_attr_found("level", v);
+        v.as_u64().map(|v| v as u8)
     }
 
     /// Returns the `start` attribute for `orderedList` nodes.
     pub fn ordered_list_start(&self) -> Option<u64> {
-        self.attrs.as_ref()?.get("start")?.as_u64()
+        self.trace_attr_search("start");
+        let v = self.attrs.as_ref()?.get("start")?;
+        self.trace_attr_found("start", v);
+        v.as_u64()
     }
 
     /// Returns the `type` attribute for `orderedList` nodes (e.g., "1", "a", "A", "i", "I").
     pub fn ordered_list_type(&self) -> Option<OrderedListType> {
-        self.attrs
-            .as_ref()?
-            .get("type")?
-            .as_str()
-            .map(|v| OrderedListType::from(v))
+        self.trace_attr_search("type");
+        let v = self.attrs.as_ref()?.get("type")?;
+        self.trace_attr_found("type", v);
+        v.as_str().map(|v| OrderedListType::from(v))
     }
 
     /// Returns the `checked` attribute for `taskItem` nodes.
     pub fn is_checked(&self) -> Option<bool> {
-        self.attrs.as_ref()?.get("checked")?.as_bool()
+        self.trace_attr_search("checked");
+        let v = self.attrs.as_ref()?.get("checked")?;
+        self.trace_attr_found("checked", v);
+        v.as_bool()
     }
 }

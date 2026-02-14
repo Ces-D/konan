@@ -77,9 +77,8 @@ impl Line {
 
 #[cfg(test)]
 mod tests {
-    use crate::elements::{FormatState, StyledChar, TextSize};
-
     use super::*;
+    use crate::elements::{FormatState, StyledChar, TextSize};
     fn styled_char(ch: char) -> StyledChar {
         StyledChar {
             ch,
@@ -191,9 +190,8 @@ mod tests {
     }
 
     mod add_char {
-        use crate::elements::Justify;
-
         use super::*;
+        use crate::elements::Justify;
 
         #[test]
         fn returns_none_when_line_not_full() {

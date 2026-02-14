@@ -1,17 +1,20 @@
 use anyhow::Result;
 use chrono::{DateTime, Utc};
-use designs::box_template::BoxTemplateBuilder;
-use designs::habit_tracker_template::HabitTrackerTemplateBuilder;
-use designs::tiptap_interpreter::TipTapInterpreter;
+use designs::{
+    box_template::BoxTemplateBuilder, habit_tracker_template::HabitTrackerTemplateBuilder,
+    tiptap_interpreter::TipTapInterpreter,
+};
 use rongta::RongtaPrinter;
 use rumqttc::{AsyncClient, MqttOptions, QoS, TlsConfiguration, Transport};
 use rustls::pki_types::{CertificateDer, PrivateKeyDer, PrivatePkcs1KeyDer, PrivatePkcs8KeyDer};
 use rustls_pemfile::{certs, pkcs8_private_keys, rsa_private_keys};
 use serde::{Deserialize, Serialize};
-use std::fs::File;
-use std::io::{self, BufReader};
-use std::path::PathBuf;
-use std::sync::Arc;
+use std::{
+    fs::File,
+    io::{self, BufReader},
+    path::PathBuf,
+    sync::Arc,
+};
 use tokio::time::Duration;
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -35,7 +38,7 @@ struct HabitTrackerTemplate {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    println!("Starting Konan iot client");
+    log::info!("Starting Konan iot client");
     // AWS IoT Core endpoint (replace with your endpoint)
     let endpoint = std::env::var("KONAN_IOT_ENDPOINT_URL").unwrap();
     let port = std::env::var("KONAN_IOT_PORT").unwrap().parse().unwrap();
@@ -61,12 +64,15 @@ async fn main() -> Result<()> {
     client
         .subscribe("command/konan_pi/habits", QoS::AtLeastOnce)
         .await?;
+    log::info!("Subscribed to `command/konan_pi/habits`");
     client
         .subscribe("command/konan_pi/message", QoS::AtLeastOnce)
         .await?;
+    log::info!("Subscribed to `command/konan_pi/message`");
     client
         .subscribe("command/konan_pi/outline", QoS::AtLeastOnce)
         .await?;
+    log::info!("Subscribed to `command/konan_pi/outline`");
 
     // Handle incoming messages
     loop {
@@ -74,70 +80,79 @@ async fn main() -> Result<()> {
             Ok(notification) => {
                 if let rumqttc::Event::Incoming(rumqttc::Packet::Publish(msg)) = notification {
                     let payload = String::from_utf8_lossy(&msg.payload);
-                    println!("Received message on topic '{}': {}", msg.topic, payload);
+                    log::trace!("Received message on topic '{}': {}", msg.topic, payload);
                     let builder = RongtaPrinter::new(true);
                     let pattern = designs::get_random_box_pattern()?;
                     let (vendor_id, product_id) = get_printer_details();
                     let driver = rongta::SupportedDriver::Usb(vendor_id, product_id);
-                    if msg.topic == "command/konan_pi/outline" {
-                        let params: OutlineTemplate = serde_json::from_str(&payload).unwrap();
-                        let mut template = BoxTemplateBuilder::new(builder, pattern);
-                        template
-                            .set_lined(params.lined.unwrap_or_default())
-                            .set_banner(params.banner);
-                        if let Some(d) = params.date {
-                            template.set_date_banner(d.into());
+
+                    match msg.topic.as_str() {
+                        "command/konan_pi/outline" => {
+                            let params: OutlineTemplate = serde_json::from_str(&payload).unwrap();
+                            let mut template = BoxTemplateBuilder::new(builder, pattern);
+                            template
+                                .set_lined(params.lined.unwrap_or_default())
+                                .set_banner(params.banner);
+                            if let Some(d) = params.date {
+                                template.set_date_banner(d.into());
+                            }
+                            if let Some(rows) = params.rows {
+                                template.set_rows(rows);
+                            }
+                            template.print(driver)?;
                         }
-                        if let Some(rows) = params.rows {
-                            template.set_rows(rows);
+                        "command/konan_pi/habits" => {
+                            let params: HabitTrackerTemplate =
+                                serde_json::from_str(&payload).unwrap();
+                            let mut template = HabitTrackerTemplateBuilder::new(
+                                builder,
+                                pattern,
+                                params.habit,
+                                params.start_date,
+                                params.end_date,
+                            );
+                            template.print(driver)?;
                         }
-                        template.print(driver)?;
-                    } else if msg.topic == "command/konan_pi/habits" {
-                        let params: HabitTrackerTemplate = serde_json::from_str(&payload).unwrap();
-                        let mut template = HabitTrackerTemplateBuilder::new(
-                            builder,
-                            pattern,
-                            params.habit,
-                            params.start_date,
-                            params.end_date,
-                        );
-                        template.print(driver)?;
-                    } else if msg.topic == "command/konan_pi/message" {
-                        let template = TipTapInterpreter::new(builder);
-                        let params: PrintableMessage = serde_json::from_str(&payload).unwrap();
-                        template.print(params.content, params.rows, driver)?;
+                        "command/konan_pi/message" => {
+                            let template = TipTapInterpreter::new(builder);
+                            let params: PrintableMessage = serde_json::from_str(&payload).unwrap();
+                            template.print(params.content, params.rows, driver)?;
+                        }
+                        _ => {
+                            log::error!("Unsupported message topic")
+                        }
                     }
                 }
             }
             Err(e) => {
-                eprintln!("Error: {:?}", e);
+                log::error!("Error: {:?}", e);
                 tokio::time::sleep(Duration::from_secs(1)).await;
             }
         }
     }
 }
 
-fn configure_tls(cert_path: &str, key_path: &str, ca_path: &str) -> Result<TlsConfiguration> {
-    // Expand leading '~' to the user's home directory so paths like
-    // '~/.iot-device/certs/*' resolve correctly.
-    fn expand_home(p: &str) -> PathBuf {
-        let home = || {
-            std::env::var_os("HOME")
-                .map(PathBuf::from)
-                .or_else(|| std::env::var_os("USERPROFILE").map(PathBuf::from))
-        };
+// Expand leading '~' to the user's home directory so paths like
+// '~/.iot-device/certs/*' resolve correctly.
+fn expand_home(p: &str) -> PathBuf {
+    let home = || {
+        std::env::var_os("HOME")
+            .map(PathBuf::from)
+            .or_else(|| std::env::var_os("USERPROFILE").map(PathBuf::from))
+    };
 
-        if p == "~" {
-            return home().unwrap_or_else(|| PathBuf::from("~"));
-        }
-        if let Some(rest) = p.strip_prefix("~/") {
-            return home()
-                .map(|h| h.join(rest))
-                .unwrap_or_else(|| PathBuf::from(p));
-        }
-        PathBuf::from(p)
+    if p == "~" {
+        return home().unwrap_or_else(|| PathBuf::from("~"));
     }
+    if let Some(rest) = p.strip_prefix("~/") {
+        return home()
+            .map(|h| h.join(rest))
+            .unwrap_or_else(|| PathBuf::from(p));
+    }
+    PathBuf::from(p)
+}
 
+fn configure_tls(cert_path: &str, key_path: &str, ca_path: &str) -> Result<TlsConfiguration> {
     let cert_path = expand_home(cert_path);
     let key_path = expand_home(key_path);
     let ca_path = expand_home(ca_path);

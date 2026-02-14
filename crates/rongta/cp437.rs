@@ -1,6 +1,5 @@
 use anyhow::{Result, bail};
-use std::collections::HashSet;
-use std::sync::LazyLock;
+use std::{collections::HashSet, sync::LazyLock};
 
 /// Extended CP437 characters (non-ASCII) for O(1) lookup
 static EXTENDED_CP437: LazyLock<HashSet<char>> = LazyLock::new(|| {

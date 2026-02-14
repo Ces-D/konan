@@ -11,4 +11,3 @@ path = "rongta.rs"
 anyhow.workspace = true
 log.workspace = true
 escpos.workspace = true
-strum.workspace = true

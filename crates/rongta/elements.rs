@@ -1,7 +1,6 @@
+use crate::{cp437, printer::AnyPrinter};
 use anyhow::Result;
 use escpos::utils::JustifyMode;
-
-use crate::{cp437, printer::AnyPrinter};
 
 pub trait ToPrintCommand {
     fn to_print_command(&self, printer: &mut AnyPrinter) -> Result<()>;
