@@ -127,7 +127,8 @@ impl TipTapInterpreter {
                     Ok(())
                 }
                 NodeType::ListItem => self.render_children(node),
-                NodeType::TaskList => {
+                NodeType::TaskList => self.render_children(node),
+                NodeType::TaskItem => {
                     if let Some(children) = &node.content {
                         for child in children {
                             let before = TaskListBefore::new(node.is_checked().unwrap_or_default());
@@ -137,7 +138,6 @@ impl TipTapInterpreter {
                     }
                     Ok(())
                 }
-                NodeType::TaskItem => self.render_children(node),
                 NodeType::CodeBlock => {
                     self.builder.new_line();
                     self.builder.set_is_bold(true);
