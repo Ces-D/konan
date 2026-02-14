@@ -218,3 +218,127 @@ impl JSONContent {
         v.as_bool()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn fixture() -> JSONContent {
+        serde_json::from_str(include_str!("test.json")).expect("valid tiptap json")
+    }
+
+    fn collect_by_type<'a>(node: &'a JSONContent, ty: NodeType, out: &mut Vec<&'a JSONContent>) {
+        if node.node_type == Some(ty.clone()) {
+            out.push(node);
+        }
+        if let Some(children) = &node.content {
+            for c in children {
+                collect_by_type(c, ty.clone(), out);
+            }
+        }
+    }
+
+    #[test]
+    fn paragraph_text_align_variants() {
+        let root = fixture();
+        let mut paras = Vec::new();
+        collect_by_type(&root, NodeType::Paragraph, &mut paras);
+
+        // Right-aligned paragraph exists
+        let right = paras
+            .iter()
+            .find(|n| matches!(n.text_align(), Some(TextAlign::Right)))
+            .expect("a right-aligned paragraph");
+        assert_eq!(right.text_align(), Some(TextAlign::Right));
+
+        // Center-aligned paragraph exists
+        let center = paras
+            .iter()
+            .find(|n| matches!(n.text_align(), Some(TextAlign::Center)))
+            .expect("a center-aligned paragraph");
+        assert_eq!(center.text_align(), Some(TextAlign::Center));
+
+        // Paragraph with null/absent textAlign returns None
+        let none = paras
+            .iter()
+            .find(|n| n.attrs.as_ref().and_then(|a| a.get("textAlign")).is_some())
+            .and_then(|n| {
+                if n.text_align().is_none() {
+                    Some(*n)
+                } else {
+                    None
+                }
+            })
+            .expect("a paragraph with textAlign null that yields None");
+        assert!(none.text_align().is_none());
+    }
+
+    #[test]
+    fn heading_level_and_align() {
+        let root = fixture();
+        let mut heads = Vec::new();
+        collect_by_type(&root, NodeType::Heading, &mut heads);
+
+        // We expect levels 1..=4 to appear at least once
+        for expected in [1u8, 2, 3, 4] {
+            assert!(
+                heads.iter().any(|h| h.heading_level() == Some(expected)),
+                "missing heading level {}",
+                expected
+            );
+        }
+
+        // A level-1 centered heading exists
+        let h1_center = heads
+            .iter()
+            .find(|h| h.heading_level() == Some(1) && h.text_align() == Some(TextAlign::Center))
+            .expect("a level 1 centered heading");
+        assert_eq!(h1_center.heading_level(), Some(1));
+        assert_eq!(h1_center.text_align(), Some(TextAlign::Center));
+    }
+
+    #[test]
+    fn ordered_list_attrs() {
+        let root = fixture();
+        let mut lists = Vec::new();
+        collect_by_type(&root, NodeType::OrderedList, &mut lists);
+        let ol = lists.first().expect("an ordered list node");
+        assert_eq!(ol.ordered_list_start(), Some(1));
+        assert!(ol.ordered_list_type().is_none()); // type: null
+    }
+
+    #[test]
+    fn task_item_checked_variants() {
+        let root = fixture();
+        let mut items = Vec::new();
+        collect_by_type(&root, NodeType::TaskItem, &mut items);
+
+        assert!(items.iter().any(|n| n.is_checked() == Some(false)));
+        assert!(items.iter().any(|n| n.is_checked() == Some(true)));
+    }
+
+    #[test]
+    fn code_block_language_none_and_non_applicability() {
+        let root = fixture();
+        let mut blocks = Vec::new();
+        collect_by_type(&root, NodeType::CodeBlock, &mut blocks);
+        let cb = blocks.first().expect("a code block node");
+        assert!(cb.code_block_language().is_none()); // language: null
+
+        // For non-codeBlock nodes, method must also return None
+        let mut paras = Vec::new();
+        collect_by_type(&root, NodeType::Paragraph, &mut paras);
+        let p = paras.first().unwrap();
+        assert!(p.code_block_language().is_none());
+    }
+
+    #[test]
+    fn bold_mark_detection() {
+        let root = fixture();
+        let mut texts = Vec::new();
+        collect_by_type(&root, NodeType::Text, &mut texts);
+
+        assert!(texts.iter().any(|t| t.is_bold()));
+        assert!(texts.iter().any(|t| !t.is_bold()));
+    }
+}
