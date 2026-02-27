@@ -26,8 +26,8 @@ impl ListItemBefore {
         Self {
             content: "∙ ".to_string(),
             format: FormatState {
-                text_size: TextSize::Medium,
                 is_bold: true,
+                text_size: TextSize::Medium,
             },
             ordinal: None,
         }
@@ -101,7 +101,7 @@ pub struct TaskListBefore {
 impl TaskListBefore {
     pub fn new(checked: bool) -> Self {
         let content = if checked {
-            "[x] ".to_string()
+            "[■] ".to_string()
         } else {
             "[ ] ".to_string()
         };
@@ -150,4 +150,26 @@ impl ToBuilderCommand for HorizontalRule {
         builder.new_line();
         Ok(())
     }
+}
+
+pub fn set_heading_style(level: u8, builder: &mut RongtaPrinter) -> Result<()> {
+    match level {
+        1 => {
+            builder.set_text_size(TextSize::ExtraLarge);
+            builder.set_is_bold(true);
+        }
+        2 => {
+            builder.set_text_size(TextSize::Large);
+            builder.set_is_bold(true);
+        }
+        3 => {
+            builder.set_text_size(TextSize::Large);
+            builder.set_is_bold(false);
+        }
+        _ => {
+            builder.set_text_size(TextSize::Medium);
+            builder.set_is_bold(true);
+        }
+    };
+    Ok(())
 }

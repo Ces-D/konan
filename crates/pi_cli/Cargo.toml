@@ -1,5 +1,5 @@
 [package]
-name = "pi_mqtt"
+name = "pi_cli"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
@@ -7,6 +7,7 @@ authors.workspace = true
 [dependencies]
 env_logger.workspace = true
 log.workspace = true
+clap.workspace = true
 anyhow.workspace = true
 rumqttc.workspace = true
 tokio.workspace = true
@@ -18,9 +19,6 @@ serde.workspace = true
 serde_json.workspace = true
 
 rongta.workspace = true
-designs.workspace = true
+blueprint.workspace = true
 tiptap.workspace = true
-
-[[bin]]
-name = "pi_mqtt"
-path = "pi_mqtt.rs"
+cli_shared.workspace = true

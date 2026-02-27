@@ -4,41 +4,6 @@ This document catalogs identified issues in the `rongta` crate affecting speed, 
 
 ---
 
-## Critical Bug
-
-### Italic Handling Overwrites Underline State
-
-**File:** `elements.rs:46-62`
-
-```rust
-impl ToPrintCommand for TextDecoration {
-    fn to_print_command(&self, printer: &mut AnyPrinter) -> Result<()> {
-        match self.bold {
-            true => printer.bold(true)?,
-            false => printer.bold(false)?,
-        };
-        match self.underline {
-            true => printer.underline(UnderlineMode::Single)?,
-            false => printer.underline(UnderlineMode::None)?,
-        };
-        match self.italic {
-            true => printer.underline(UnderlineMode::Single)?,   // BUG: overwrites underline
-            false => printer.underline(UnderlineMode::None)?,    // BUG: overwrites underline
-        };
-        Ok(())
-    }
-}
-```
-
-**Problem:** The italic branch calls `underline()` instead of an italic command. This means:
-
-- If `underline=true, italic=false`: underline is set, then immediately turned off
-- If `underline=false, italic=true`: underline is turned on (wrong behavior)
-
-**Fix:** Either remove italic handling (ESC/POS printers typically don't support italic), or use a different command if the printer supports it.
-
----
-
 ## Speed Issues
 
 ### 1. Per-Character ESC/POS Command Overhead

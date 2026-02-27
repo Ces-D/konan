@@ -1,20 +1,20 @@
 [package]
-name = "designs"
+name = "blueprint"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
 
 [lib]
-path = "designs.rs"
+path = "blueprint.rs"
 
 [dependencies]
 anyhow.workspace = true
 log.workspace = true
 rand.workspace = true
 chrono.workspace = true
-
-tiptap.workspace = true
-rongta.workspace = true
-
-[dev-dependencies]
+serde.workspace = true
 serde_json.workspace = true
+pulldown-cmark.workspace = true
+
+rongta.workspace = true
+tiptap.workspace = true

@@ -3,13 +3,14 @@ resolver = "2"
 members = [
   "crates/cli",
   "crates/rongta",
-  "crates/designs",
-  "crates/tiptap",
   "crates/lambda_konan_message",
   "crates/lambda_shared",
   "crates/lambda_konan_outline",
   "crates/lambda_konan_habits",
-  "crates/pi_mqtt",
+  "crates/pi_cli",
+  "crates/blueprint",
+  "crates/tiptap",
+  "crates/cli_shared",
 ]
 
 [workspace.package]
@@ -38,7 +39,10 @@ rustls = "0.22"
 rustls-pemfile = "2"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["fmt", "json"] }
+pulldown-cmark = "0.13.1"
+ssh2 = "0.9.5"
 
 rongta = { path = "./crates/rongta" }
-designs = { path = "./crates/designs" }
+blueprint = { path = "./crates/blueprint" }
 tiptap = { path = "./crates/tiptap" }
+cli_shared = { path = "./crates/cli_shared" }

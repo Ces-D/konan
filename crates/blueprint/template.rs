@@ -1,14 +1,11 @@
-pub mod box_template;
-pub mod habit_tracker_template;
-mod render;
-pub mod tiptap_interpreter;
-
+pub mod box_outline;
+pub mod habit_tracker;
 use anyhow::Context;
 use rand::seq::IndexedRandom;
 use std::path::PathBuf;
 
 fn konan_templates() -> PathBuf {
-    PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/templates"))
+    PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/template"))
 }
 
 fn get_box_patterns() -> anyhow::Result<Vec<BoxPattern>> {

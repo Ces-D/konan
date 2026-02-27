@@ -1,11 +1,13 @@
-mod file_command;
-mod network;
-mod template_command;
-
 use clap::{Parser, Subcommand};
+mod connect_command;
+mod file_command;
+mod shared;
+mod template_command;
 
 #[derive(Debug, Subcommand)]
 pub enum Commands {
+    #[clap(about = "Subscribe to IoTCore topic")]
+    Connect,
     #[clap(about = "Print a file")]
     File(file_command::FileArgs),
     #[clap(about = "Print a predefined template")]
@@ -13,7 +15,7 @@ pub enum Commands {
 }
 
 #[derive(Debug, clap::Parser)]
-#[clap(author, version, bin_name = "konan", subcommand_required = true)]
+#[clap(author, version, bin_name = "konan_pi", subcommand_required = true)]
 pub struct App {
     #[clap(subcommand)]
     pub command: Commands,
@@ -29,11 +31,10 @@ pub struct App {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    cli_shared::init_logging("cli");
-
+    cli_shared::init_logging("pi_cli");
     let app = App::parse();
-
     match app.command {
+        Commands::Connect => connect_command::handle_connect_command().await,
         Commands::File(file_args) => {
             file_command::handle_file_command(file_args, !app.no_cut).await
         }

@@ -1,0 +1,15 @@
+[package]
+name = "cli_shared"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+
+[lib]
+path = "cli_shared.rs"
+
+[dependencies]
+env_logger.workspace = true
+log.workspace = true
+clap.workspace = true
+anyhow.workspace = true
+chrono.workspace = true

@@ -1,9 +1,8 @@
-use crate::render::{HorizontalRule, ListItemBefore, TaskListBefore};
+use crate::interpreter::block_adornment;
+
+use super::block_adornment::{HorizontalRule, ListItemBefore, TaskListBefore};
 use anyhow::{Result, bail};
-use rongta::{
-    RongtaPrinter, SupportedDriver, ToBuilderCommand,
-    elements::{Justify, TextSize},
-};
+use rongta::{RongtaPrinter, SupportedDriver, ToBuilderCommand, elements::Justify};
 use tiptap::{JSONContent, NodeType};
 
 pub struct TipTapInterpreter {
@@ -15,7 +14,7 @@ impl TipTapInterpreter {
     }
 
     pub fn print(
-        mut self,
+        &mut self,
         content: JSONContent,
         rows: Option<u32>,
         driver: SupportedDriver,
@@ -48,26 +47,7 @@ impl TipTapInterpreter {
 
     fn handle_heading_style(&mut self, node: &JSONContent) -> Result<()> {
         let level = node.heading_level().unwrap_or(3);
-        match level {
-            1 => {
-                self.builder.set_text_size(TextSize::ExtraLarge);
-                self.builder.set_is_bold(true);
-            }
-            2 => {
-                self.builder.set_text_size(TextSize::Large);
-                self.builder.set_is_bold(true);
-            }
-            3 => {
-                self.builder.set_text_size(TextSize::Large);
-                self.builder.set_is_bold(false);
-            }
-            _ => {
-                self.builder.set_text_size(TextSize::Medium);
-                self.builder.set_is_bold(true);
-            }
-        };
-
-        Ok(())
+        block_adornment::set_heading_style(level, &mut self.builder)
     }
 
     fn render_content(&mut self, node: &JSONContent) -> Result<()> {
