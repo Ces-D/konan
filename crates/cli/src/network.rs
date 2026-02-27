@@ -1,9 +1,11 @@
 use anyhow::{Context, Result};
 use cli_shared::RemoteFile;
 use ssh2::Session;
-use std::io::prelude::*;
-use std::net::TcpStream;
-use std::path::{Path, PathBuf};
+use std::{
+    io::prelude::*,
+    net::TcpStream,
+    path::{Path, PathBuf},
+};
 
 pub struct Network {
     session: Session,
