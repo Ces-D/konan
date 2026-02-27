@@ -184,7 +184,7 @@ impl JSONContent {
         }
         let align = self.attrs.as_ref()?.get("textAlign")?;
         self.trace_attr_found("textAlign", align);
-        align.as_str().map(|v| TextAlign::from(v))
+        align.as_str().map(TextAlign::from)
     }
 
     pub fn heading_level(&self) -> Option<u8> {
@@ -207,7 +207,7 @@ impl JSONContent {
         self.trace_attr_search("type");
         let v = self.attrs.as_ref()?.get("type")?;
         self.trace_attr_found("type", v);
-        v.as_str().map(|v| OrderedListType::from(v))
+        v.as_str().map(OrderedListType::from)
     }
 
     /// Returns the `checked` attribute for `taskItem` nodes.

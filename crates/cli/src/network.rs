@@ -75,7 +75,7 @@ impl Network {
     }
 
     pub fn upload_file(&mut self, path: &PathBuf) -> Result<RemoteFile> {
-        let (rf, mode, size) = Self::prepare_file(&path)?;
+        let (rf, mode, size) = Self::prepare_file(path)?;
         let mut remote_file = self
             .session
             .scp_send(Path::new(&rf.file_name()), mode, size, None)

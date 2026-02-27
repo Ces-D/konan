@@ -142,7 +142,7 @@ impl TipTapInterpreter {
     fn render_children(&mut self, node: &JSONContent) -> Result<()> {
         if let Some(content) = &node.content {
             for child in content {
-                self.render_content(&child)?;
+                self.render_content(child)?;
             }
         }
         Ok(())

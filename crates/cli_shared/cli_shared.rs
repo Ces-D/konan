@@ -33,18 +33,18 @@ impl DateBanner {
         now + chrono::Duration::days(days_until)
     }
 }
-impl Into<chrono::DateTime<Local>> for DateBanner {
-    fn into(self) -> DateTime<Local> {
-        match self {
+impl From<DateBanner> for chrono::DateTime<Local> {
+    fn from(val: DateBanner) -> Self {
+        match val {
             DateBanner::Today => chrono::Local::now(),
             DateBanner::Tomorrow => chrono::Local::now() + chrono::Duration::days(1),
-            DateBanner::Mon => Self::next_weekday(chrono::Weekday::Mon),
-            DateBanner::Tue => Self::next_weekday(chrono::Weekday::Tue),
-            DateBanner::Wed => Self::next_weekday(chrono::Weekday::Wed),
-            DateBanner::Thu => Self::next_weekday(chrono::Weekday::Thu),
-            DateBanner::Fri => Self::next_weekday(chrono::Weekday::Fri),
-            DateBanner::Sat => Self::next_weekday(chrono::Weekday::Sat),
-            DateBanner::Sun => Self::next_weekday(chrono::Weekday::Sun),
+            DateBanner::Mon => DateBanner::next_weekday(chrono::Weekday::Mon),
+            DateBanner::Tue => DateBanner::next_weekday(chrono::Weekday::Tue),
+            DateBanner::Wed => DateBanner::next_weekday(chrono::Weekday::Wed),
+            DateBanner::Thu => DateBanner::next_weekday(chrono::Weekday::Thu),
+            DateBanner::Fri => DateBanner::next_weekday(chrono::Weekday::Fri),
+            DateBanner::Sat => DateBanner::next_weekday(chrono::Weekday::Sat),
+            DateBanner::Sun => DateBanner::next_weekday(chrono::Weekday::Sun),
         }
     }
 }
@@ -58,14 +58,14 @@ pub enum TimePeriod {
 }
 impl TimePeriod {
     pub fn into_end_date(&self, start_date: DateTime<Utc>) -> DateTime<Utc> {
-        match self {
-            &TimePeriod::Week => start_date
+        match *self {
+            TimePeriod::Week => start_date
                 .checked_add_days(Days::new(7))
                 .unwrap_or(start_date + Duration::weeks(1)),
-            &TimePeriod::TwoWeek => start_date
+            TimePeriod::TwoWeek => start_date
                 .checked_add_days(Days::new(14))
                 .unwrap_or(start_date + Duration::weeks(2)),
-            &TimePeriod::Month => start_date
+            TimePeriod::Month => start_date
                 .checked_add_months(Months::new(1))
                 .unwrap_or(start_date + Duration::days(30)),
         }

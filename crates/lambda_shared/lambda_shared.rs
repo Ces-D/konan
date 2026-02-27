@@ -18,6 +18,12 @@ pub struct IotConfigEnv {
     pub endpoint: String,
     pub topic: String,
 }
+impl Default for IotConfigEnv {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl IotConfigEnv {
     pub fn new() -> Self {
         let endpoint = std::env::var("IOT_ENDPOINT").expect("IOT_ENDPOINT not set");
@@ -34,8 +40,8 @@ pub async fn create_iot_client(endpoint: String) -> Client {
     let config = aws_sdk_iotdataplane::config::Builder::from(&shared_config)
         .endpoint_url(format!("https://{}", endpoint))
         .build();
-    let client = aws_sdk_iotdataplane::Client::from_conf(config);
-    client
+    
+    aws_sdk_iotdataplane::Client::from_conf(config)
 }
 
 pub fn initialize_tracing() {

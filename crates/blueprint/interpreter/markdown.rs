@@ -29,7 +29,10 @@ impl MarkdownInterpreter {
 
     fn handle_tag_start(&mut self, tag: &Tag) -> Result<()> {
         match tag {
-            Tag::Paragraph => Ok(self.builder.reset_styles()),
+            Tag::Paragraph => {
+                self.builder.reset_styles();
+                Ok(())
+            },
             Tag::Heading {
                 level,
                 id: _,
@@ -53,7 +56,7 @@ impl MarkdownInterpreter {
                 Ok(())
             }
             Tag::List(ordered_start) => {
-                self.list_index = ordered_start.clone();
+                self.list_index = *ordered_start;
                 Ok(())
             }
             Tag::Item => {
@@ -67,7 +70,10 @@ impl MarkdownInterpreter {
                 };
                 before.to_builder_command(&mut self.builder)
             }
-            Tag::Strong => Ok(self.builder.set_is_bold(true)),
+            Tag::Strong => {
+                self.builder.set_is_bold(true);
+                Ok(())
+            },
             // Tag::Strikethrough => todo!(),
             // Tag::Link {
             //     link_type,
@@ -109,7 +115,7 @@ impl MarkdownInterpreter {
                     r.to_builder_command(&mut self.builder)
                 }
                 pulldown_cmark::Event::TaskListMarker(checked) => {
-                    let before = TaskListBefore::new(checked.clone());
+                    let before = TaskListBefore::new(*checked);
                     before.to_builder_command(&mut self.builder)
                 }
             }?;

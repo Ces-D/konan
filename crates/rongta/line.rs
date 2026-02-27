@@ -68,7 +68,7 @@ impl Line {
             self.chars.split_off(self.chars.len() - 1)
         };
 
-        (!remainder.is_empty()).then(|| Line {
+        (!remainder.is_empty()).then_some(Line {
             justify_content: self.justify_content,
             chars: remainder,
         })
