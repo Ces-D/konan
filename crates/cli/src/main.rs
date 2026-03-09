@@ -29,7 +29,7 @@ pub struct App {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    cli_shared::init_logging("cli");
+    cli_shared::init_logging("konan");
 
     let app = App::parse();
 

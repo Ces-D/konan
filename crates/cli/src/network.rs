@@ -34,6 +34,7 @@ impl Network {
         channel
             .exec(&command)
             .with_context(|| "Unable to execute remote command")?;
+        log::info!("Command executed");
         let mut s = String::new();
         channel.read_to_string(&mut s).unwrap();
         channel.close()?;
