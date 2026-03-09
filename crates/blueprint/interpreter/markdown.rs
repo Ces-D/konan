@@ -1,7 +1,9 @@
-use crate::interpreter::block_adornment::{HorizontalRule, ListItemBefore, TaskListBefore};
+use crate::interpreter::block_adornment::{
+    HorizontalRule, ListItemBefore, TaskListBefore, ToBuilderCommand,
+};
 use anyhow::Result;
 use pulldown_cmark::{Options, Parser, Tag};
-use rongta::{RongtaPrinter, SupportedDriver, ToBuilderCommand};
+use rongta::{RongtaPrinter, SupportedDriver};
 
 pub struct MarkdownInterpreter {
     builder: RongtaPrinter,
@@ -32,7 +34,7 @@ impl MarkdownInterpreter {
             Tag::Paragraph => {
                 self.builder.reset_styles();
                 Ok(())
-            },
+            }
             Tag::Heading {
                 level,
                 id: _,
@@ -73,20 +75,7 @@ impl MarkdownInterpreter {
             Tag::Strong => {
                 self.builder.set_is_bold(true);
                 Ok(())
-            },
-            // Tag::Strikethrough => todo!(),
-            // Tag::Link {
-            //     link_type,
-            //     dest_url,
-            //     title,
-            //     id,
-            // } => todo!(),
-            // Tag::Image {
-            //     link_type,
-            //     dest_url,
-            //     title,
-            //     id,
-            // } => todo!(),
+            }
             _ => Ok(()),
         }
     }

@@ -41,6 +41,8 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["fmt", "json"] }
 pulldown-cmark = "0.13.1"
 ssh2 = "0.9.5"
+toml = "1.0.3"
+reqwest = "0.13.2"
 
 rongta = { path = "./crates/rongta" }
 blueprint = { path = "./crates/blueprint" }

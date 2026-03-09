@@ -1,3 +1,4 @@
+use crate::elements::{FormatState, Justify};
 use anyhow::{Context, Result};
 use elements::ToPrintCommand;
 use escpos::{
@@ -14,17 +15,11 @@ mod printer;
 
 pub const CPL: u8 = 48; // characters per line
 
-/// Call the RongtaPrinter in a consistent way
-pub trait ToBuilderCommand {
-    fn to_builder_command(&self, builder: &mut RongtaPrinter) -> Result<()>;
-}
-
 #[derive(Default)]
 pub struct RongtaPrinter {
     lines: Vec<line::Line>,
     cut: bool,
-    current_text_size: elements::TextSize,
-    current_is_bold: bool,
+    format_state: FormatState,
 }
 
 impl RongtaPrinter {
@@ -35,49 +30,22 @@ impl RongtaPrinter {
         }
     }
 
-    fn current_line_justify_content(&self) -> elements::Justify {
-        if self.lines.is_empty() {
-            Default::default()
-        } else {
-            self.lines.last().unwrap().justify_content
-        }
-    }
-
-    /// Add a character to the current line. Provides greater control over formatting.
-    pub fn add_char_content(&mut self, content: elements::StyledChar) -> Result<()> {
-        let mut current_line = self.lines.pop().unwrap_or_else(|| line::Line {
-            justify_content: self.current_line_justify_content(),
-            ..Default::default()
-        });
-        let new_line = current_line.add_char(content);
-        self.lines.push(current_line);
-        if let Some(new_line) = new_line {
-            self.lines.push(new_line);
-        }
-        Ok(())
-    }
-
     /// Add content to the current line. The content is formatted according to the current formatting state.
     /// This is a more efficient way to add content that needs the same formatting.
     /// Highly recommended to call `new_line()` after adding content to the current line.
     pub fn add_content(&mut self, content: &str) -> Result<()> {
         if self.lines.is_empty() {
-            self.lines.push(line::Line {
-                justify_content: self.current_line_justify_content(),
-                ..Default::default()
-            });
+            self.lines.push(line::Line::default());
         }
-
         for char in content.chars() {
-            let current_state = elements::FormatState {
-                text_size: self.current_text_size,
-                is_bold: self.current_is_bold,
-            };
             let new_line = {
-                let current_line = self.lines.last_mut().unwrap();
+                let current_line = self
+                    .lines
+                    .last_mut()
+                    .expect("New line should have been added");
                 current_line.add_char(elements::StyledChar {
                     ch: char,
-                    state: current_state,
+                    state: self.format_state,
                 })
             };
 
@@ -85,15 +53,11 @@ impl RongtaPrinter {
                 self.lines.push(new_line);
             }
         }
-
         Ok(())
     }
 
     pub fn new_line(&mut self) {
-        self.lines.push(line::Line {
-            justify_content: self.current_line_justify_content(),
-            ..Default::default()
-        });
+        self.lines.push(line::Line::default());
     }
 
     /// Set the justify content of the last line or add a new line with the given justify content
@@ -101,26 +65,24 @@ impl RongtaPrinter {
         if let Some(line) = self.lines.last_mut() {
             line.justify_content = justify;
         } else {
-            self.lines.push(line::Line {
-                justify_content: justify,
-                ..Default::default()
-            });
+            self.lines.push(line::Line::new(Vec::default(), justify));
         }
     }
 
     /// Set the text size of the next characters
     pub fn set_text_size(&mut self, size: elements::TextSize) {
-        self.current_text_size = size;
+        self.format_state.text_size = size;
     }
 
+    /// Set the bold state for the next characters
     pub fn set_is_bold(&mut self, bold: bool) {
-        self.current_is_bold = bold;
+        self.format_state.is_bold = bold;
     }
 
+    /// Reset all styles for the next characters
+    /// If you want to reset the justification you should explicitly set or call `new_line`
     pub fn reset_styles(&mut self) {
-        self.current_text_size = elements::TextSize::default();
-        self.current_is_bold = Default::default();
-        self.set_justify_content(elements::Justify::default());
+        self.format_state = Default::default();
     }
 
     /// Core printing logic - works with any printer variant.
@@ -129,23 +91,23 @@ impl RongtaPrinter {
         printer: &mut printer::AnyPrinter,
         rows: Option<u32>,
     ) -> anyhow::Result<()> {
+        let mut last_justify_content = Justify::default();
+        let mut last_format_state = FormatState::default();
         if let Some(rows_per_page) = rows {
-            // Paginated printing with cuts after each page
             let mut line_count = 0;
             for line in &self.lines {
-                line.justify_content.to_print_command(printer)?;
-                for styled_char in &line.chars {
-                    styled_char.to_print_command(printer)?;
-                }
-                printer.feed()?;
+                print_line(
+                    line,
+                    printer,
+                    &mut last_justify_content,
+                    &mut last_format_state,
+                )?;
                 line_count += 1;
                 if line_count >= rows_per_page {
                     printer.print_cut()?;
                     line_count = 0;
                 }
             }
-
-            // Pad remaining lines to fill the page
             if line_count > 0 {
                 while line_count < rows_per_page {
                     printer.feed()?;
@@ -154,13 +116,13 @@ impl RongtaPrinter {
                 printer.print_cut()?;
             }
         } else {
-            // Original behavior
             for line in &self.lines {
-                line.justify_content.to_print_command(printer)?;
-                for styled_char in &line.chars {
-                    styled_char.to_print_command(printer)?;
-                }
-                printer.feed()?;
+                print_line(
+                    line,
+                    printer,
+                    &mut last_justify_content,
+                    &mut last_format_state,
+                )?;
             }
             match self.cut {
                 true => printer.print_cut()?,
@@ -221,4 +183,24 @@ where
     printer.reset()?;
 
     Ok(printer)
+}
+
+fn print_line(
+    line: &line::Line,
+    printer: &mut printer::AnyPrinter,
+    last_justify_content: &mut Justify,
+    last_format_state: &mut FormatState,
+) -> anyhow::Result<()> {
+    if *last_justify_content != line.justify_content {
+        line.justify_content.to_print_command(printer)?;
+        *last_justify_content = line.justify_content;
+    }
+    for styled_char in &line.chars {
+        if *last_format_state != styled_char.state {
+            styled_char.state.to_print_command(printer)?;
+            *last_format_state = styled_char.state;
+        }
+        styled_char.to_print_command(printer)?;
+    }
+    printer.feed()
 }

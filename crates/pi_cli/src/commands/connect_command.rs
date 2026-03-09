@@ -1,5 +1,5 @@
-use crate::shared::driver;
-use anyhow::{Context, bail};
+use crate::{config::KonanIotConfig, shared::driver};
+use anyhow::bail;
 use blueprint::{
     interpreter::tiptap::TipTapInterpreter,
     template::{
@@ -20,52 +20,6 @@ use std::{
 };
 use tiptap::JSONContent;
 use tokio::time::Duration;
-
-#[derive(Debug, Clone)]
-pub struct KonanIotConfig {
-    pub endpoint: String,
-    pub port: u16,
-    pub client_id: String,
-    pub cert_path: PathBuf,
-    pub private_key_path: PathBuf,
-    pub root_trust_path: PathBuf,
-}
-
-impl KonanIotConfig {
-    pub fn from_env() -> anyhow::Result<Self> {
-        let endpoint = std::env::var("KONAN_IOT_ENDPOINT_URL")
-            .with_context(|| "Missing KONAN_IOT_ENDPOINT_URL")?;
-
-        let port = std::env::var("KONAN_IOT_PORT")
-            .with_context(|| "Missing KONAN_IOT_PORT")?
-            .parse::<u16>()
-            .with_context(|| "KONAN_IOT_PORT not valid port number")?;
-
-        let client_id =
-            std::env::var("KONAN_IOT_CLIENT_ID").with_context(|| "Missing KONAN_IOT_CLIENT_ID")?;
-
-        let cert_path = std::env::var("KONAN_CERTIFICATION_PATH")
-            .with_context(|| "Missing KONAN_CERTIFICATION_PATH")?
-            .into();
-
-        let private_key_path = std::env::var("KONAN_PRIVATE_KEY_PATH")
-            .with_context(|| "Missing KONAN_PRIVATE_KEY_PATH")?
-            .into();
-
-        let root_trust_path = std::env::var("KONAN_ROOT_OF_TRUST_PATH")
-            .with_context(|| "Missing KONAN_ROOT_OF_TRUST_PATH")?
-            .into();
-
-        Ok(Self {
-            endpoint,
-            port,
-            client_id,
-            cert_path,
-            private_key_path,
-            root_trust_path,
-        })
-    }
-}
 
 #[derive(Debug, Deserialize, Serialize)]
 struct OutlineTemplate {
@@ -121,8 +75,7 @@ impl TryFrom<String> for MqttTopic {
     }
 }
 
-pub async fn handle_connect_command() -> anyhow::Result<()> {
-    let config = KonanIotConfig::from_env()?;
+pub async fn handle_connect_command(config: KonanIotConfig) -> anyhow::Result<()> {
     let mut mqttoptions = MqttOptions::new(config.client_id, config.endpoint, config.port);
     mqttoptions.set_keep_alive(Duration::from_secs(30));
 

@@ -1,7 +1,7 @@
 use super::block_adornment::{HorizontalRule, ListItemBefore, TaskListBefore};
-use crate::interpreter::block_adornment;
+use crate::interpreter::block_adornment::{self, ToBuilderCommand};
 use anyhow::{Result, bail};
-use rongta::{RongtaPrinter, SupportedDriver, ToBuilderCommand, elements::Justify};
+use rongta::{RongtaPrinter, SupportedDriver, elements::Justify};
 use tiptap::{JSONContent, NodeType};
 
 pub struct TipTapInterpreter {

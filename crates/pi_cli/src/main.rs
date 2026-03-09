@@ -1,15 +1,16 @@
 use clap::{Parser, Subcommand};
-mod connect_command;
-mod file_command;
+
+use crate::config::Config;
+mod commands;
+mod config;
 mod shared;
-mod template_command;
 
 #[derive(Debug, Subcommand)]
 pub enum Commands {
     #[clap(about = "Subscribe to IoTCore topic")]
     Connect,
     #[clap(about = "Print a file")]
-    File(file_command::FileArgs),
+    File(commands::FileArgs),
     #[clap(about = "Print a predefined template")]
     Template(cli_shared::TemplateArgs),
 }
@@ -33,13 +34,12 @@ pub struct App {
 async fn main() -> anyhow::Result<()> {
     cli_shared::init_logging("pi_cli");
     let app = App::parse();
+    let config = Config::get()?;
     match app.command {
-        Commands::Connect => connect_command::handle_connect_command().await,
-        Commands::File(file_args) => {
-            file_command::handle_file_command(file_args, !app.no_cut).await
-        }
+        Commands::Connect => commands::handle_connect_command(config.connect.clone()).await,
+        Commands::File(file_args) => commands::handle_file_command(file_args, !app.no_cut).await,
         Commands::Template(template_args) => {
-            template_command::handle_template_command(template_args, !app.no_cut).await
+            commands::handle_template_command(template_args, !app.no_cut).await
         }
     }
 }

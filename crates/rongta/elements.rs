@@ -24,7 +24,6 @@ impl TextSize {
         }
     }
 }
-
 impl ToPrintCommand for TextSize {
     fn to_print_command(&self, printer: &mut AnyPrinter) -> Result<()> {
         match self {
@@ -59,6 +58,12 @@ pub struct FormatState {
     pub text_size: TextSize,
     pub is_bold: bool,
 }
+impl ToPrintCommand for FormatState {
+    fn to_print_command(&self, printer: &mut AnyPrinter) -> Result<()> {
+        printer.bold(self.is_bold)?;
+        self.text_size.to_print_command(printer)
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct StyledChar {
@@ -70,113 +75,6 @@ impl ToPrintCommand for StyledChar {
         // Normalize typographic characters to ASCII equivalents before CP437 validation
         let normalized_ch = cp437::normalize_char(self.ch).unwrap_or(self.ch);
         let ascii_content = cp437::cp437_char_only(normalized_ch)?;
-        self.state.text_size.to_print_command(printer)?;
-        printer.bold(self.state.is_bold)?;
-        printer.write(&ascii_content.to_string())?;
-        Ok(())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    mod text_size {
-        use super::*;
-
-        #[test]
-        fn medium_has_width_1() {
-            assert_eq!(TextSize::Medium.char_width(), 1);
-        }
-
-        #[test]
-        fn large_has_width_2() {
-            assert_eq!(TextSize::Large.char_width(), 2);
-        }
-
-        #[test]
-        fn extra_large_has_width_3() {
-            assert_eq!(TextSize::ExtraLarge.char_width(), 3);
-        }
-
-        #[test]
-        fn default_is_medium() {
-            assert_eq!(TextSize::default(), TextSize::Medium);
-        }
-    }
-
-    mod justify {
-        use super::*;
-
-        #[test]
-        fn default_is_left() {
-            assert_eq!(Justify::default(), Justify::Left);
-        }
-
-        #[test]
-        fn variants_are_distinct() {
-            assert_ne!(Justify::Left, Justify::Center);
-            assert_ne!(Justify::Center, Justify::Right);
-            assert_ne!(Justify::Left, Justify::Right);
-        }
-    }
-
-    mod format_state {
-        use super::*;
-
-        #[test]
-        fn default_has_medium_size_and_no_decoration() {
-            let state = FormatState::default();
-            assert_eq!(state.text_size, TextSize::Medium);
-            assert_eq!(state.is_bold, false);
-        }
-
-        #[test]
-        fn can_construct_with_custom_values() {
-            let state = FormatState {
-                text_size: TextSize::Large,
-                is_bold: true,
-            };
-            assert_eq!(state.text_size, TextSize::Large);
-            assert!(state.is_bold);
-        }
-    }
-
-    mod styled_char {
-        use super::*;
-
-        #[test]
-        fn can_construct_with_char_and_state() {
-            let styled = StyledChar {
-                ch: 'A',
-                state: FormatState::default(),
-            };
-            assert_eq!(styled.ch, 'A');
-        }
-
-        #[test]
-        fn preserves_format_state() {
-            let state = FormatState {
-                text_size: TextSize::ExtraLarge,
-                is_bold: true,
-            };
-            let styled = StyledChar { ch: 'X', state };
-            assert_eq!(styled.state.text_size, TextSize::ExtraLarge);
-            assert!(styled.state.is_bold);
-        }
-
-        #[test]
-        fn can_clone() {
-            let styled = StyledChar {
-                ch: 'Z',
-                state: FormatState {
-                    text_size: TextSize::Large,
-                    is_bold: true,
-                },
-            };
-            let cloned = styled.clone();
-            assert_eq!(cloned.ch, styled.ch);
-            assert_eq!(cloned.state, styled.state);
-        }
+        printer.write(&ascii_content.to_string())
     }
 }

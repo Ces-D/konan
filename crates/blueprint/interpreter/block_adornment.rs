@@ -1,9 +1,13 @@
 use anyhow::Result;
 use rongta::{
-    RongtaPrinter, ToBuilderCommand,
+    RongtaPrinter,
     elements::{FormatState, Justify, TextSize},
 };
 use tiptap::OrderedListType;
+
+pub trait ToBuilderCommand {
+    fn to_builder_command(&self, builder: &mut RongtaPrinter) -> Result<()>;
+}
 
 /// Style the ListItem ::before pseudoelement
 pub struct ListItemBefore {
