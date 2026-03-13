@@ -12,21 +12,21 @@ pub async fn handle_template_command(args: TemplateArgs, cut: bool) -> anyhow::R
             date,
             banner,
         } => {
-            let mut cmd = "konan template box".to_string();
+            let mut cmd = "pi_cli template box".to_string();
             if let Some(rows) = rows {
-                cmd.push_str(&format!(" --rows {}", rows));
+                cmd.push_str(&format!(" {}", rows));
             }
             if lined {
                 cmd.push_str(" --lined");
             }
             if let Some(date) = date {
                 cmd.push_str(&format!(
-                    " --date {:?}",
-                    date.to_possible_value().unwrap_or_default()
+                    " --date {}",
+                    date.to_possible_value().unwrap().get_name()
                 ));
             }
             if let Some(banner) = banner {
-                cmd.push_str(&format!(" --banner {}", banner));
+                cmd.push_str(&format!(" --banner '{}'", banner));
             }
             if !cut {
                 cmd.push_str(" --no-cut");
@@ -47,14 +47,14 @@ pub async fn handle_template_command(args: TemplateArgs, cut: bool) -> anyhow::R
             start_date,
             time_period,
         } => {
-            let mut cmd = format!("konan template habit-tracker '{}'", habit);
+            let mut cmd = format!("pi_cli template habit-tracker '{}'", habit);
             if let Some(start_date) = start_date {
-                cmd.push_str(&format!(" --start_date {}", start_date));
+                cmd.push_str(&format!(" --start-date {}", start_date));
             }
             if let Some(time_period) = time_period {
                 cmd.push_str(&format!(
-                    " --time_period {:?}",
-                    time_period.to_possible_value().unwrap_or_default()
+                    " --time-period {}",
+                    time_period.to_possible_value().unwrap().get_name()
                 ));
             }
             if !cut {
