@@ -7,7 +7,7 @@ use blueprint::{
         habit_tracker::HabitTrackerTemplateBuilder,
     },
 };
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Local, NaiveTime, Utc};
 use rongta::RongtaPrinter;
 use rumqttc::{AsyncClient, ConnectionError, MqttOptions, QoS, TlsConfiguration, Transport};
 use rustls::pki_types::{CertificateDer, PrivateKeyDer, PrivatePkcs1KeyDer, PrivatePkcs8KeyDer};
@@ -75,82 +75,127 @@ impl TryFrom<String> for MqttTopic {
     }
 }
 
-pub async fn handle_connect_command(config: KonanIotConfig) -> anyhow::Result<()> {
-    let mut mqttoptions = MqttOptions::new(config.client_id, config.endpoint, config.port);
-    mqttoptions.set_keep_alive(Duration::from_secs(30));
+const ACTIVE_WINDOW_START: u32 = 9;
+const ACTIVE_WINDOW_END: u32 = 22;
 
+fn is_within_active_window() -> bool {
+    let now = Local::now().time();
+    let start = NaiveTime::from_hms_opt(ACTIVE_WINDOW_START, 0, 0).unwrap();
+    let end = NaiveTime::from_hms_opt(ACTIVE_WINDOW_END, 0, 0).unwrap();
+    now >= start && now < end
+}
+
+fn duration_until_window_start() -> Duration {
+    let now = Local::now();
+    let today_start = now
+        .date_naive()
+        .and_hms_opt(ACTIVE_WINDOW_START, 0, 0)
+        .unwrap();
+    let target = if now.time() >= NaiveTime::from_hms_opt(ACTIVE_WINDOW_START, 0, 0).unwrap() {
+        // Already past today's start, aim for tomorrow
+        today_start + chrono::Duration::days(1)
+    } else {
+        today_start
+    };
+    let diff = target - now.naive_local();
+    diff.to_std().unwrap_or(Duration::from_secs(60))
+}
+
+pub async fn handle_connect_command(config: KonanIotConfig) -> anyhow::Result<()> {
     let tls_config = configure_tls(
-        // "~/.iot-device/certs/konan.pem",
         config.cert_path,
-        // "~/.iot-device/certs/konan_private.key",
         config.private_key_path,
-        // "~/.iot-device/certs/AmazonRootCA1.pem",
         config.root_trust_path,
     )?;
 
-    mqttoptions.set_transport(Transport::Tls(tls_config));
-    let (client, mut eventloop) = AsyncClient::new(mqttoptions, 10);
-
-    MqttTopic::Habits.subscribe_client(&client).await?;
-    MqttTopic::Message.subscribe_client(&client).await?;
-    MqttTopic::Outline.subscribe_client(&client).await?;
-
     loop {
-        match eventloop.poll().await {
-            Ok(notification) => {
-                if let rumqttc::Event::Incoming(rumqttc::Packet::Publish(msg)) = notification {
-                    if let Ok(topic) = MqttTopic::try_from(msg.topic) {
-                        let builder = RongtaPrinter::new(true);
-                        let pattern = get_random_box_pattern()?;
+        if !is_within_active_window() {
+            let wait = duration_until_window_start();
+            log::info!(
+                "Outside active window ({:02}:00–{:02}:00). Sleeping for {}m until next window.",
+                ACTIVE_WINDOW_START,
+                ACTIVE_WINDOW_END,
+                wait.as_secs() / 60
+            );
+            tokio::time::sleep(wait).await;
+            continue;
+        }
 
-                        match topic {
-                            MqttTopic::Habits => {
-                                let params: HabitTrackerTemplate =
-                                    serde_json::from_slice(&msg.payload).unwrap();
-                                let mut template = HabitTrackerTemplateBuilder::new(
-                                    builder,
-                                    pattern,
-                                    params.habit,
-                                    params.start_date,
-                                    params.end_date,
-                                );
-                                tokio::task::spawn_blocking(move || template.print(driver()));
-                            }
-                            MqttTopic::Message => {
-                                let mut template = TipTapInterpreter::new(builder);
-                                let params: PrintableMessage =
-                                    serde_json::from_slice(&msg.payload).unwrap();
-                                tokio::task::spawn_blocking(move || {
-                                    template.print(params.content, params.rows, driver())
-                                });
-                            }
-                            MqttTopic::Outline => {
-                                let params: OutlineTemplate =
-                                    serde_json::from_slice(&msg.payload).unwrap();
-                                let mut template = BoxTemplateBuilder::new(builder, pattern);
-                                template
-                                    .set_lined(params.lined.unwrap_or_default())
-                                    .set_banner(params.banner);
-                                if let Some(d) = params.date {
-                                    template.set_date_banner(d.into());
+        log::info!("Within active window. Connecting to MQTT broker.");
+
+        let mut mqttoptions = MqttOptions::new(&config.client_id, &config.endpoint, config.port);
+        mqttoptions.set_keep_alive(Duration::from_secs(30));
+        mqttoptions.set_transport(Transport::Tls(tls_config.clone()));
+
+        let (client, mut eventloop) = AsyncClient::new(mqttoptions, 10);
+
+        MqttTopic::Habits.subscribe_client(&client).await?;
+        MqttTopic::Message.subscribe_client(&client).await?;
+        MqttTopic::Outline.subscribe_client(&client).await?;
+
+        loop {
+            if !is_within_active_window() {
+                log::info!("Active window ended. Disconnecting from MQTT broker.");
+                let _ = client.disconnect().await;
+                break;
+            }
+
+            match eventloop.poll().await {
+                Ok(notification) => {
+                    if let rumqttc::Event::Incoming(rumqttc::Packet::Publish(msg)) = notification {
+                        if let Ok(topic) = MqttTopic::try_from(msg.topic) {
+                            let builder = RongtaPrinter::new(true);
+                            let pattern = get_random_box_pattern()?;
+
+                            match topic {
+                                MqttTopic::Habits => {
+                                    let params: HabitTrackerTemplate =
+                                        serde_json::from_slice(&msg.payload).unwrap();
+                                    let mut template = HabitTrackerTemplateBuilder::new(
+                                        builder,
+                                        pattern,
+                                        params.habit,
+                                        params.start_date,
+                                        params.end_date,
+                                    );
+                                    tokio::task::spawn_blocking(move || template.print(driver()));
                                 }
-                                if let Some(rows) = params.rows {
-                                    template.set_rows(rows);
+                                MqttTopic::Message => {
+                                    let mut template = TipTapInterpreter::new(builder);
+                                    let params: PrintableMessage =
+                                        serde_json::from_slice(&msg.payload).unwrap();
+                                    tokio::task::spawn_blocking(move || {
+                                        template.print(params.content, params.rows, driver())
+                                    });
                                 }
-                                tokio::task::spawn_blocking(move || template.print(driver()));
+                                MqttTopic::Outline => {
+                                    let params: OutlineTemplate =
+                                        serde_json::from_slice(&msg.payload).unwrap();
+                                    let mut template = BoxTemplateBuilder::new(builder, pattern);
+                                    template
+                                        .set_lined(params.lined.unwrap_or_default())
+                                        .set_banner(params.banner);
+                                    if let Some(d) = params.date {
+                                        template.set_date_banner(d.into());
+                                    }
+                                    if let Some(rows) = params.rows {
+                                        template.set_rows(rows);
+                                    }
+                                    tokio::task::spawn_blocking(move || template.print(driver()));
+                                }
                             }
+                        } else {
+                            log::warn!("Called invalid topic")
                         }
-                    } else {
-                        log::warn!("Called invalid topic")
                     }
                 }
-            }
-            Err(e) => {
-                if is_fatal_error(&e) {
-                    bail!("Fatal error: {}", e)
-                } else {
-                    log::error!("Non fatal error: {}", e);
-                    tokio::time::sleep(Duration::from_secs(5)).await;
+                Err(e) => {
+                    if is_fatal_error(&e) {
+                        bail!("Fatal error: {}", e)
+                    } else {
+                        log::error!("Non fatal error: {}", e);
+                        tokio::time::sleep(Duration::from_secs(5)).await;
+                    }
                 }
             }
         }
