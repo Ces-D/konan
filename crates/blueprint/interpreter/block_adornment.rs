@@ -10,6 +10,7 @@ pub trait ToBuilderCommand {
 }
 
 /// Style the ListItem ::before pseudoelement
+#[derive(Debug, Clone)]
 pub struct ListItemBefore {
     ordinal: Option<OrderedListType>,
     content: String,

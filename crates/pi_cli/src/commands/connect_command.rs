@@ -18,7 +18,7 @@ use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
-use tiptap::JSONContent;
+use tiptap::TipTapNode;
 use tokio::time::Duration;
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -30,7 +30,7 @@ struct OutlineTemplate {
 }
 #[derive(Debug, Deserialize, Serialize)]
 struct PrintableMessage {
-    content: JSONContent,
+    content: TipTapNode,
     rows: Option<u32>,
 }
 #[derive(Debug, Deserialize, Serialize)]

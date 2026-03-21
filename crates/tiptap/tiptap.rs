@@ -98,17 +98,17 @@ pub struct Mark {
 /// attributes. Text nodes (nodes with type `text`) have a `text` property and no
 /// children.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct JSONContent {
+pub struct TipTapNode {
     /// The type of the node (e.g., Doc, Paragraph, Text)
-    #[serde(rename = "type", skip_serializing_if = "Option::is_none")]
-    pub node_type: Option<NodeType>,
+    #[serde(rename = "type")]
+    pub node_type: NodeType,
     /// The attributes of the node. Attributes can have any JSON-serializable value.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub attrs: Option<HashMap<String, serde_json::Value>>,
 
     /// The children of the node. A node can have other nodes as children.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub content: Option<Vec<JSONContent>>,
+    pub content: Option<Vec<TipTapNode>>,
 
     /// A list of marks of the node. Inline nodes can have marks.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -122,14 +122,14 @@ pub struct JSONContent {
     pub text: Option<String>,
 }
 
-impl JSONContent {
+impl TipTapNode {
     /// Trace helper: logs what attribute key is being searched and what attrs exist
     fn trace_attr_search(&self, key: &str) {
         match &self.attrs {
             Some(attrs) => {
                 let keys: Vec<&str> = attrs.keys().map(|k| k.as_str()).collect();
                 log::trace!(
-                    "JSONContent: searching for attr '{}' on node {:?}; available attrs: {:?}",
+                    "TipTapNode: searching for attr '{}' on node {:?}; available attrs: {:?}",
                     key,
                     self.node_type,
                     keys
@@ -137,7 +137,7 @@ impl JSONContent {
             }
             None => {
                 log::trace!(
-                    "JSONContent: searching for attr '{}' on node {:?}; no attrs present",
+                    "TipTapNode: searching for attr '{}' on node {:?}; no attrs present",
                     key,
                     self.node_type
                 );
@@ -148,7 +148,7 @@ impl JSONContent {
     /// Trace helper: logs when an attribute has been found
     fn trace_attr_found(&self, key: &str, value: &serde_json::Value) {
         log::trace!(
-            "JSONContent: found attr '{}' = {:?} on node {:?}",
+            "TipTapNode: found attr '{}' = {:?} on node {:?}",
             key,
             value,
             self.node_type
@@ -158,7 +158,7 @@ impl JSONContent {
     /// Returns the `language` attribute for `codeBlock` nodes.
     pub fn code_block_language(&self) -> Option<&str> {
         self.trace_attr_search("language");
-        if self.node_type != Some(NodeType::CodeBlock) {
+        if self.node_type != NodeType::CodeBlock {
             return None;
         }
         let v = self.attrs.as_ref()?.get("language")?;
@@ -178,8 +178,7 @@ impl JSONContent {
     pub fn text_align(&self) -> Option<TextAlign> {
         self.trace_attr_search("textAlign");
         // Only Paragraph or Heading support textAlign
-        if self.node_type != Some(NodeType::Paragraph) && self.node_type != Some(NodeType::Heading)
-        {
+        if self.node_type != NodeType::Paragraph && self.node_type != NodeType::Heading {
             return None;
         }
         let align = self.attrs.as_ref()?.get("textAlign")?;
@@ -217,18 +216,70 @@ impl JSONContent {
         self.trace_attr_found("checked", v);
         v.as_bool()
     }
+
+    pub fn events(&self) -> EventIter<'_> {
+        EventIter {
+            stack: vec![(self, 0)],
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum Event<'a> {
+    NodeStart(&'a TipTapNode),
+    NodeEnd(&'a TipTapNode),
+    Text(&'a str, &'a TipTapNode),
+}
+
+pub struct EventIter<'a> {
+    stack: Vec<(&'a TipTapNode, usize)>,
+}
+
+impl<'a> Iterator for EventIter<'a> {
+    type Item = Event<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let (node, idx) = self.stack.pop()?;
+
+        if node.node_type == NodeType::Text {
+            // Text nodes are leaves: emit Text, then push (node, children+1) so
+            // the next pop emits NodeEnd (idx > children len).
+            if idx == 0 {
+                self.stack.push((node, 1));
+                return Some(Event::Text(node.text.as_deref().unwrap_or(""), node));
+            }
+            // idx > 0 for text nodes — done, no NodeEnd for text
+            return self.next();
+        }
+
+        let children = node.content.as_deref().unwrap_or(&[]);
+
+        if idx == 0 {
+            self.stack.push((node, 1));
+            return Some(Event::NodeStart(node));
+        }
+
+        let child_idx = idx - 1;
+        if child_idx < children.len() {
+            self.stack.push((node, idx + 1));
+            self.stack.push((&children[child_idx], 0));
+            return self.next();
+        }
+
+        Some(Event::NodeEnd(node))
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    fn fixture() -> JSONContent {
+    fn fixture() -> TipTapNode {
         serde_json::from_str(include_str!("test.json")).expect("valid tiptap json")
     }
 
-    fn collect_by_type<'a>(node: &'a JSONContent, ty: NodeType, out: &mut Vec<&'a JSONContent>) {
-        if node.node_type == Some(ty.clone()) {
+    fn collect_by_type<'a>(node: &'a TipTapNode, ty: NodeType, out: &mut Vec<&'a TipTapNode>) {
+        if node.node_type == ty.clone() {
             out.push(node);
         }
         if let Some(children) = &node.content {
@@ -330,6 +381,33 @@ mod tests {
         collect_by_type(&root, NodeType::Paragraph, &mut paras);
         let p = paras.first().unwrap();
         assert!(p.code_block_language().is_none());
+    }
+
+    #[test]
+    fn events_emit_start_text_end() {
+        let root = fixture();
+        let events: Vec<_> = root.events().collect();
+
+        // First event is NodeStart(doc)
+        assert!(
+            matches!(events.first(), Some(Event::NodeStart(n)) if n.node_type == NodeType::Doc)
+        );
+        // Last event is NodeEnd(doc)
+        assert!(matches!(events.last(), Some(Event::NodeEnd(n)) if n.node_type == NodeType::Doc));
+
+        // Every NodeStart has a matching NodeEnd
+        let starts = events
+            .iter()
+            .filter(|e| matches!(e, Event::NodeStart(_)))
+            .count();
+        let ends = events
+            .iter()
+            .filter(|e| matches!(e, Event::NodeEnd(_)))
+            .count();
+        assert_eq!(starts, ends);
+
+        // At least one Text event exists
+        assert!(events.iter().any(|e| matches!(e, Event::Text(_, _))));
     }
 
     #[test]

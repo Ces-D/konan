@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize)]
 struct PrintableMessage {
-    content: tiptap::JSONContent,
+    content: tiptap::TipTapNode,
     rows: Option<u32>,
 }
 
