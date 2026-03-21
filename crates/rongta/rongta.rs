@@ -132,7 +132,6 @@ impl RongtaPrinter {
         Ok(())
     }
 
-    /// Print via USB connection.
     pub fn print(&self, rows: Option<u32>, driver: SupportedDriver) -> Result<()> {
         let mut printer = match driver {
             SupportedDriver::Console => {

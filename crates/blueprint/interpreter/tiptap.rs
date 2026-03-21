@@ -60,7 +60,11 @@ impl TipTapInterpreter {
             match event {
                 tiptap::Event::NodeStart(tip_tap_node) => match tip_tap_node.node_type {
                     NodeType::Doc => continue,
-                    NodeType::Paragraph => self.handle_text_align_attribute(tip_tap_node)?,
+                    NodeType::Paragraph => {
+                        self.builder.new_line();
+                        self.builder.reset_styles();
+                        self.handle_text_align_attribute(tip_tap_node)?
+                    }
                     NodeType::Text => self.handle_bold_mark(tip_tap_node)?,
                     NodeType::Heading => {
                         self.handle_text_align_attribute(tip_tap_node)?;
@@ -99,7 +103,8 @@ impl TipTapInterpreter {
                     }
                     NodeType::TaskList => self.builder.new_line(),
                     NodeType::TaskItem => {
-                        let before = TaskListBefore::new(tip_tap_node.is_checked().unwrap_or_default());
+                        let before =
+                            TaskListBefore::new(tip_tap_node.is_checked().unwrap_or_default());
                         before.to_builder_command(&mut self.builder)?;
                     }
                 },
