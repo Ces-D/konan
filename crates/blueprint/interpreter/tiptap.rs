@@ -60,13 +60,16 @@ impl TipTapInterpreter {
             match event {
                 tiptap::Event::NodeStart(tip_tap_node) => match tip_tap_node.node_type {
                     NodeType::Doc => continue,
-                    NodeType::Paragraph => self.handle_text_align_attribute(node)?,
-                    NodeType::Text => self.handle_bold_mark(node)?,
+                    NodeType::Paragraph => self.handle_text_align_attribute(tip_tap_node)?,
+                    NodeType::Text => self.handle_bold_mark(tip_tap_node)?,
                     NodeType::Heading => {
                         self.handle_text_align_attribute(tip_tap_node)?;
                         self.handle_heading_style(tip_tap_node)?;
                     }
-                    NodeType::BulletList => self.list = Some(ListItemBefore::new_unordered()),
+                    NodeType::BulletList => {
+                        self.list = Some(ListItemBefore::new_unordered());
+                        self.list_start = None;
+                    }
                     NodeType::OrderedList => {
                         self.list = Some(ListItemBefore::new_ordered(
                             tip_tap_node.ordered_list_type(),
@@ -74,15 +77,13 @@ impl TipTapInterpreter {
                         self.list_start = tip_tap_node.ordered_list_start()
                     }
                     NodeType::ListItem => {
-                        if self.list.is_some() {
-                            if self.list_start.is_some() {
-                                let mut before = self.list.clone().unwrap();
-                                before.next_index(self.list_start.unwrap_or_default() + 1);
-                                before.to_builder_command(&mut self.builder)?;
-                            } else {
-                                let before = self.list.clone().unwrap();
-                                before.to_builder_command(&mut self.builder)?;
+                        if let Some(ref list) = self.list {
+                            let mut before = list.clone();
+                            if let Some(ref mut start) = self.list_start {
+                                before.next_index(*start);
+                                *start += 1;
                             }
+                            before.to_builder_command(&mut self.builder)?;
                         }
                         continue;
                     }
@@ -98,7 +99,7 @@ impl TipTapInterpreter {
                     }
                     NodeType::TaskList => self.builder.new_line(),
                     NodeType::TaskItem => {
-                        let before = TaskListBefore::new(node.is_checked().unwrap_or_default());
+                        let before = TaskListBefore::new(tip_tap_node.is_checked().unwrap_or_default());
                         before.to_builder_command(&mut self.builder)?;
                     }
                 },
