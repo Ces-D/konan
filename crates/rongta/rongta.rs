@@ -1,4 +1,4 @@
-use crate::elements::{FormatState, Justify};
+use crate::elements::{FormatState, Justify, TextSize};
 use anyhow::{Context, Result};
 use elements::ToPrintCommand;
 use escpos::{
@@ -194,6 +194,15 @@ fn print_line(
     if *last_justify_content != line.justify_content {
         line.justify_content.to_print_command(printer)?;
         *last_justify_content = line.justify_content;
+    }
+    // Some thermal printers ignore GS ! (text size reset) when it follows a
+    // sequence of feeds that were issued while a larger size was active. Reset
+    // the format state before feeding an empty line so the printer does not
+    // carry the previous text size into subsequent lines.
+    if line.chars.is_empty() && last_format_state.text_size != TextSize::default() {
+        let default = FormatState::default();
+        default.to_print_command(printer)?;
+        *last_format_state = default;
     }
     for styled_char in &line.chars {
         if *last_format_state != styled_char.state {
