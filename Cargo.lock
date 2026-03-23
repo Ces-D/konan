@@ -582,7 +582,6 @@ dependencies = [
  "rongta",
  "serde",
  "serde_json",
- "tiptap",
 ]
 
 [[package]]
@@ -1523,7 +1522,6 @@ dependencies = [
  "lambda_shared",
  "serde",
  "serde_json",
- "tiptap",
  "tokio",
  "tracing",
 ]
@@ -1538,7 +1536,6 @@ dependencies = [
  "lambda_shared",
  "serde",
  "serde_json",
- "tiptap",
  "tokio",
  "tracing",
 ]
@@ -1554,7 +1551,6 @@ dependencies = [
  "lambda_shared",
  "serde",
  "serde_json",
- "tiptap",
  "tokio",
  "tracing",
 ]
@@ -1838,7 +1834,6 @@ dependencies = [
  "rustls-pemfile",
  "serde",
  "serde_json",
- "tiptap",
  "tokio",
  "tokio-rustls 0.25.0",
  "toml",
@@ -2591,15 +2586,6 @@ checksum = "42d3e9c45c09de15d06dd8acf5f4e0e399e85927b7f00711024eb7ae10fa4869"
 dependencies = [
  "displaydoc",
  "zerovec",
-]
-
-[[package]]
-name = "tiptap"
-version = "0.3.5"
-dependencies = [
- "log",
- "serde",
- "serde_json",
 ]
 
 [[package]]

@@ -1,7 +1,7 @@
 use crate::{config::KonanIotConfig, shared::driver};
 use anyhow::bail;
 use blueprint::{
-    interpreter::tiptap::TipTapInterpreter,
+    interpreter::markdown::MarkdownInterpreter,
     template::{
         box_outline::BoxTemplateBuilder, get_random_box_pattern,
         habit_tracker::HabitTrackerTemplateBuilder,
@@ -18,7 +18,6 @@ use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
-use tiptap::TipTapNode;
 use tokio::time::Duration;
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -30,7 +29,7 @@ struct OutlineTemplate {
 }
 #[derive(Debug, Deserialize, Serialize)]
 struct PrintableMessage {
-    content: TipTapNode,
+    content: String,
     rows: Option<u32>,
 }
 #[derive(Debug, Deserialize, Serialize)]
@@ -161,11 +160,11 @@ pub async fn handle_connect_command(config: KonanIotConfig) -> anyhow::Result<()
                                     tokio::task::spawn_blocking(move || template.print(driver()));
                                 }
                                 MqttTopic::Message => {
-                                    let mut template = TipTapInterpreter::new(builder);
+                                    let mut template = MarkdownInterpreter::new(builder);
                                     let params: PrintableMessage =
                                         serde_json::from_slice(&msg.payload).unwrap();
                                     tokio::task::spawn_blocking(move || {
-                                        template.print(params.content, params.rows, driver())
+                                        template.print(&params.content, params.rows, driver())
                                     });
                                 }
                                 MqttTopic::Outline => {

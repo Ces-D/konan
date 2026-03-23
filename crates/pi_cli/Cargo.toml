@@ -21,5 +21,4 @@ toml.workspace = true
 
 rongta.workspace = true
 blueprint.workspace = true
-tiptap.workspace = true
 cli_shared.workspace = true

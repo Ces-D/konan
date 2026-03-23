@@ -9,7 +9,6 @@ members = [
   "crates/lambda_konan_habits",
   "crates/pi_cli",
   "crates/blueprint",
-  "crates/tiptap",
   "crates/cli_shared",
 ]
 
@@ -46,5 +45,4 @@ reqwest = "0.13.2"
 
 rongta = { path = "./crates/rongta" }
 blueprint = { path = "./crates/blueprint" }
-tiptap = { path = "./crates/tiptap" }
 cli_shared = { path = "./crates/cli_shared" }

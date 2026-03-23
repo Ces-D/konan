@@ -3,10 +3,31 @@ use rongta::{
     RongtaPrinter,
     elements::{FormatState, Justify, TextSize},
 };
-use tiptap::OrderedListType;
+use serde::{Deserialize, Serialize};
 
 pub trait ToBuilderCommand {
     fn to_builder_command(&self, builder: &mut RongtaPrinter) -> Result<()>;
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
+pub enum OrderedListType {
+    LowerCaseLetter,
+    UpperCaseLetter,
+    LowerCaseRoman,
+    UpperCaseRoman,
+    #[default]
+    Number,
+}
+impl From<&str> for OrderedListType {
+    fn from(value: &str) -> Self {
+        match value {
+            "a" => Self::LowerCaseLetter,
+            "A" => Self::UpperCaseLetter,
+            "i" => Self::LowerCaseRoman,
+            "I" => Self::UpperCaseRoman,
+            _ => Self::Number,
+        }
+    }
 }
 
 /// Style the ListItem ::before pseudoelement

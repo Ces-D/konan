@@ -17,4 +17,3 @@ serde_json.workspace = true
 pulldown-cmark.workspace = true
 
 rongta.workspace = true
-tiptap.workspace = true
