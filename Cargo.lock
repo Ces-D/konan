@@ -1474,14 +1474,11 @@ name = "konan"
 version = "0.3.5"
 dependencies = [
  "anyhow",
- "blueprint",
  "chrono",
  "clap",
  "cli_shared",
  "env_logger",
  "log",
- "rand",
- "rongta",
  "ssh2",
  "tokio",
 ]

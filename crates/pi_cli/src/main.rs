@@ -3,7 +3,7 @@ use clap::{Parser, Subcommand};
 use crate::config::Config;
 mod commands;
 mod config;
-mod shared;
+pub(crate) mod print_ops;
 
 #[derive(Debug, Subcommand)]
 pub enum Commands {

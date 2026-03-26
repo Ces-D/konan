@@ -1,14 +1,6 @@
-use crate::{config::KonanIotConfig, shared::driver};
+use crate::config::KonanIotConfig;
 use anyhow::bail;
-use blueprint::{
-    interpreter::markdown::MarkdownInterpreter,
-    template::{
-        box_outline::BoxTemplateBuilder, get_random_box_pattern,
-        habit_tracker::HabitTrackerTemplateBuilder,
-    },
-};
 use chrono::{DateTime, Local, NaiveTime, Utc};
-use rongta::RongtaPrinter;
 use rumqttc::{AsyncClient, ConnectionError, MqttOptions, QoS, TlsConfiguration, Transport};
 use rustls::pki_types::{CertificateDer, PrivateKeyDer, PrivatePkcs1KeyDer, PrivatePkcs8KeyDer};
 use serde::{Deserialize, Serialize};
@@ -143,44 +135,44 @@ pub async fn handle_connect_command(config: KonanIotConfig) -> anyhow::Result<()
                 Ok(notification) => {
                     if let rumqttc::Event::Incoming(rumqttc::Packet::Publish(msg)) = notification {
                         if let Ok(topic) = MqttTopic::try_from(msg.topic) {
-                            let builder = RongtaPrinter::new(true);
-                            let pattern = get_random_box_pattern()?;
-
                             match topic {
                                 MqttTopic::Habits => {
                                     let params: HabitTrackerTemplate =
                                         serde_json::from_slice(&msg.payload).unwrap();
-                                    let mut template = HabitTrackerTemplateBuilder::new(
-                                        builder,
-                                        pattern,
-                                        params.habit,
-                                        params.start_date,
-                                        params.end_date,
-                                    );
-                                    tokio::task::spawn_blocking(move || template.print(driver()));
+                                    tokio::task::spawn_blocking(move || {
+                                        crate::print_ops::print_habit_tracker(
+                                            true,
+                                            params.habit,
+                                            params.start_date,
+                                            params.end_date,
+                                        )
+                                    });
                                 }
                                 MqttTopic::Message => {
-                                    let mut template = MarkdownInterpreter::new(builder);
                                     let params: PrintableMessage =
                                         serde_json::from_slice(&msg.payload).unwrap();
                                     tokio::task::spawn_blocking(move || {
-                                        template.print(&params.content, params.rows, driver())
+                                        crate::print_ops::print_markdown(
+                                            true,
+                                            &params.content,
+                                            params.rows,
+                                        )
                                     });
                                 }
                                 MqttTopic::Outline => {
                                     let params: OutlineTemplate =
                                         serde_json::from_slice(&msg.payload).unwrap();
-                                    let mut template = BoxTemplateBuilder::new(builder, pattern);
-                                    template
-                                        .set_lined(params.lined.unwrap_or_default())
-                                        .set_banner(params.banner);
-                                    if let Some(d) = params.date {
-                                        template.set_date_banner(d.into());
-                                    }
-                                    if let Some(rows) = params.rows {
-                                        template.set_rows(rows);
-                                    }
-                                    tokio::task::spawn_blocking(move || template.print(driver()));
+                                    let date_local =
+                                        params.date.map(|d| d.with_timezone(&Local));
+                                    tokio::task::spawn_blocking(move || {
+                                        crate::print_ops::print_box_template(
+                                            true,
+                                            params.rows,
+                                            params.lined.unwrap_or_default(),
+                                            params.banner,
+                                            date_local,
+                                        )
+                                    });
                                 }
                             }
                         } else {

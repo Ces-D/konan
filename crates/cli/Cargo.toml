@@ -11,9 +11,6 @@ chrono.workspace = true
 env_logger.workspace = true
 log.workspace = true
 tokio.workspace = true
-rand.workspace = true
 ssh2.workspace = true
 
-rongta.workspace = true
 cli_shared.workspace = true
-blueprint.workspace = true
