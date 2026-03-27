@@ -40,7 +40,7 @@ pub async fn create_iot_client(endpoint: String) -> Client {
     let config = aws_sdk_iotdataplane::config::Builder::from(&shared_config)
         .endpoint_url(format!("https://{}", endpoint))
         .build();
-    
+
     aws_sdk_iotdataplane::Client::from_conf(config)
 }
 

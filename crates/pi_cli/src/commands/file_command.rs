@@ -9,6 +9,7 @@ pub struct FileArgs {
     rows: Option<u32>,
 }
 
-pub async fn handle_file_command(args: FileArgs, cut: bool) -> anyhow::Result<()> {
-    crate::print_ops::print_file(args.file, cut, args.rows)
+pub async fn handle_file_command(args: FileArgs, cut: bool) -> anyhow::Result<String> {
+    crate::print_ops::print_file(args.file, cut, args.rows)?;
+    Ok("File printed successfully.".to_string())
 }

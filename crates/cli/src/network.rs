@@ -1,3 +1,4 @@
+use crate::command_builder::PiCommandBuilder;
 use anyhow::{Context, Result};
 use cli_shared::RemoteFile;
 use ssh2::Session;
@@ -12,11 +13,12 @@ pub struct Network {
 }
 impl Network {
     pub fn new() -> Result<Self> {
+        // TODO: connect via ssh
         let remote_addr = std::env::var("KONAN_PI_REMOTE_HOST")
             .with_context(|| "Missing raspberry pi host addr")?;
         let remote_username = std::env::var("KONAN_PI_REMOTE_USERNAME")
             .with_context(|| "Missing raspberry pi username")?;
-        let remote_password = std::env::var("KONAN_PI_REMOTE_PASSSWORD")
+        let remote_password = std::env::var("KONAN_PI_REMOTE_PASSWORD")
             .with_context(|| "Missing raspberry pi password")?;
         // 1. Connect to the Pi
         let tcp = TcpStream::connect(remote_addr)?;
@@ -29,19 +31,40 @@ impl Network {
         Ok(Self { session: sess })
     }
 
-    pub fn execute_command(&mut self, command: String) -> Result<String> {
+    pub fn execute_command(&mut self, command: PiCommandBuilder) -> Result<()> {
+        let command = command.build();
         let mut channel = self.session.channel_session().unwrap();
         channel
             .exec(&command)
             .with_context(|| "Unable to execute remote command")?;
         log::info!("Command executed");
-        let mut s = String::new();
-        channel.read_to_string(&mut s).unwrap();
+
+        let mut stdout = String::new();
+        channel.read_to_string(&mut stdout).unwrap();
+
+        let mut stderr = String::new();
+        channel.stderr().read_to_string(&mut stderr).unwrap();
+
         channel.close()?;
-        Ok(s)
+        channel.wait_close()?;
+
+        if !stdout.is_empty() {
+            println!("{}", stdout);
+        }
+
+        if !stderr.is_empty() {
+            eprintln!("{}", stderr);
+        }
+
+        let exit_status = channel.exit_status()?;
+        if exit_status != 0 {
+            anyhow::bail!("Remote command exited with status {}", exit_status);
+        }
+
+        Ok(())
     }
 
-    fn prepare_file(p: &PathBuf) -> Result<(RemoteFile, i32, u64)> {
+    fn prepare_file(p: &Path) -> Result<(RemoteFile, i32, u64)> {
         // Check the path exists and is a file
         if !p.exists() {
             anyhow::bail!("File does not exist: {}", p.display());
@@ -77,9 +100,10 @@ impl Network {
 
     pub fn upload_file(&mut self, path: &PathBuf) -> Result<RemoteFile> {
         let (rf, mode, size) = Self::prepare_file(path)?;
+        let remote_path = format!("{}/{}", cli_shared::APPLICATION_STORAGE_DIR, rf.file_name());
         let mut remote_file = self
             .session
-            .scp_send(Path::new(&rf.file_name()), mode, size, None)
+            .scp_send(Path::new(&remote_path), mode, size, None)
             .with_context(|| "Failed to send {} over secure copy protocol")?;
         let local_file = std::fs::read(path)?;
         remote_file.write_all(&local_file)?;
@@ -88,5 +112,30 @@ impl Network {
         remote_file.close()?;
         remote_file.wait_close()?;
         Ok(rf)
+    }
+
+    pub fn upload_pulse_file(&mut self, path: &PathBuf) -> Result<String> {
+        let (_, mode, size) = Self::prepare_file(path)?;
+        let file_name = path
+            .file_name()
+            .context("Path has no file name")?
+            .to_string_lossy();
+        let remote_path = format!(
+            "{}/{}/{}",
+            cli_shared::APPLICATION_STORAGE_DIR,
+            cli_shared::PI_CLI_PULSE_DIR,
+            file_name
+        );
+        let mut remote_file = self
+            .session
+            .scp_send(Path::new(&remote_path), mode, size, None)
+            .with_context(|| format!("Failed to send '{}' over secure copy protocol", file_name))?;
+        let local_file = std::fs::read(path)?;
+        remote_file.write_all(&local_file)?;
+        remote_file.send_eof()?;
+        remote_file.wait_eof()?;
+        remote_file.close()?;
+        remote_file.wait_close()?;
+        Ok(file_name.into_owned())
     }
 }

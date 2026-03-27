@@ -1,5 +1,6 @@
 use clap::{Parser, Subcommand};
 
+mod database;
 use crate::config::Config;
 mod commands;
 mod config;
@@ -7,12 +8,13 @@ pub(crate) mod print_ops;
 
 #[derive(Debug, Subcommand)]
 pub enum Commands {
-    #[clap(about = "Subscribe to IoTCore topic")]
     Connect,
     #[clap(about = "Print a file")]
     File(commands::FileArgs),
     #[clap(about = "Print a predefined template")]
     Template(cli_shared::TemplateArgs),
+    #[clap(about = "Print scheduled jobs")]
+    Pulse(commands::PulseArgs),
 }
 
 #[derive(Debug, clap::Parser)]
@@ -37,9 +39,20 @@ async fn main() -> anyhow::Result<()> {
     let config = Config::get()?;
     match app.command {
         Commands::Connect => commands::handle_connect_command(config.connect.clone()).await,
-        Commands::File(file_args) => commands::handle_file_command(file_args, !app.no_cut).await,
+        Commands::File(file_args) => {
+            let message = commands::handle_file_command(file_args, !app.no_cut).await?;
+            println!("{message}");
+            Ok(())
+        }
         Commands::Template(template_args) => {
-            commands::handle_template_command(template_args, !app.no_cut).await
+            let message = commands::handle_template_command(template_args, !app.no_cut).await?;
+            println!("{message}");
+            Ok(())
+        }
+        Commands::Pulse(pulse_args) => {
+            let message = commands::handle_pulse_command(pulse_args).await?;
+            println!("{message}");
+            Ok(())
         }
     }
 }

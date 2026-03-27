@@ -1,7 +1,11 @@
-use blueprint::interpreter::{markdown::MarkdownInterpreter, text::TextInterpreter};
-use blueprint::template::{
-    box_outline::BoxTemplateBuilder, get_random_box_pattern,
-    habit_tracker::HabitTrackerTemplateBuilder,
+use crate::config::{application_storage_path, pulse_files_dir};
+use anyhow::Context;
+use blueprint::{
+    interpreter::{markdown::MarkdownInterpreter, text::TextInterpreter},
+    template::{
+        box_outline::BoxTemplateBuilder, get_random_box_pattern,
+        habit_tracker::HabitTrackerTemplateBuilder,
+    },
 };
 use chrono::{DateTime, Local, Utc};
 use cli_shared::RemoteFile;
@@ -57,8 +61,20 @@ pub fn print_text(cut: bool, content: &str, rows: Option<u32>) -> anyhow::Result
     interpreter.print(content, rows, driver())
 }
 
+pub fn print_pulse_file(cut: bool, filename: &str, rows: Option<u32>) -> anyhow::Result<()> {
+    let file_path = pulse_files_dir()?.join(filename);
+    let content = std::fs::read_to_string(&file_path)
+        .with_context(|| format!("Failed to read pulse file '{}'", file_path.display()))?;
+    if filename.ends_with(".md") {
+        print_markdown(cut, &content, rows)
+    } else {
+        print_text(cut, &content, rows)
+    }
+}
+
 pub fn print_file(file: RemoteFile, cut: bool, rows: Option<u32>) -> anyhow::Result<()> {
-    let file_content = std::fs::read_to_string(file.file_name())?;
+    let remote_path = application_storage_path()?.join(file.file_name());
+    let file_content = std::fs::read_to_string(remote_path)?;
     match file {
         RemoteFile::Markdown => print_markdown(cut, &file_content, rows),
         RemoteFile::Text => print_text(cut, &file_content, rows),

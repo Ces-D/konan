@@ -1,7 +1,7 @@
 use anyhow::Context;
 use cli_shared::{TemplateArgs, TemplateCommand};
 
-pub async fn handle_template_command(args: TemplateArgs, cut: bool) -> anyhow::Result<()> {
+pub async fn handle_template_command(args: TemplateArgs, cut: bool) -> anyhow::Result<String> {
     match args.command {
         TemplateCommand::Box {
             rows,
@@ -10,7 +10,8 @@ pub async fn handle_template_command(args: TemplateArgs, cut: bool) -> anyhow::R
             banner,
         } => {
             let date_local = date.map(|d| d.into());
-            crate::print_ops::print_box_template(cut, rows, lined, banner, date_local)
+            crate::print_ops::print_box_template(cut, rows, lined, banner, date_local)?;
+            Ok("Box template printed successfully.".to_string())
         }
         TemplateCommand::HabitTracker {
             habit,
@@ -27,7 +28,8 @@ pub async fn handle_template_command(args: TemplateArgs, cut: bool) -> anyhow::R
                 chrono::Utc::now()
             };
             let end = time_period.unwrap_or_default().into_end_date(start);
-            crate::print_ops::print_habit_tracker(cut, habit, start, end)
+            crate::print_ops::print_habit_tracker(cut, habit, start, end)?;
+            Ok("Habit tracker printed successfully.".to_string())
         }
     }
 }

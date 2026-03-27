@@ -1,7 +1,6 @@
 use anyhow::{Context, Result};
 use serde::Deserialize;
-use std::path::PathBuf;
-use std::sync::LazyLock;
+use std::{path::PathBuf, sync::LazyLock};
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct KonanIotConfig {
@@ -35,4 +34,29 @@ impl Config {
             anyhow::anyhow!("Failed to parse config '{}': {}", config_path.display(), e)
         })
     }
+}
+
+pub fn application_storage_path() -> Result<PathBuf> {
+    let path = std::env::home_dir()
+        .context("Could not determine home directory")?
+        .join(cli_shared::APPLICATION_STORAGE_DIR);
+    if !path.exists() {
+        std::fs::create_dir_all(&path)
+            .with_context(|| format!("Failed to storage directory '{}'", path.display()))?;
+    }
+    Ok(path)
+}
+
+pub fn pulse_database_path() -> Result<PathBuf> {
+    let db_path = application_storage_path()?.join("pulse.db");
+    Ok(db_path)
+}
+
+pub fn pulse_files_dir() -> Result<PathBuf> {
+    let pulse_path = application_storage_path()?.join(cli_shared::PI_CLI_PULSE_DIR);
+    if !pulse_path.exists() {
+        std::fs::create_dir_all(&pulse_path)
+            .with_context(|| format!("Failed to create directory '{}'", pulse_path.display()))?;
+    }
+    Ok(pulse_path)
 }

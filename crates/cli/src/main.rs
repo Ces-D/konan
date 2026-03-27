@@ -1,5 +1,7 @@
+mod command_builder;
 mod file_command;
 mod network;
+mod pulse_command;
 mod template_command;
 
 use clap::{Parser, Subcommand};
@@ -10,6 +12,8 @@ pub enum Commands {
     File(file_command::FileArgs),
     #[clap(about = "Print a predefined template")]
     Template(cli_shared::TemplateArgs),
+    #[clap(about = "Schedule a recurring print job")]
+    Pulse(pulse_command::PulseArgs),
 }
 
 #[derive(Debug, clap::Parser)]
@@ -18,7 +22,6 @@ pub struct App {
     #[clap(subcommand)]
     pub command: Commands,
     #[clap(
-        short,
         long,
         help = "Cut or not to cut.",
         long_help = "The `rows` arg in commands ignores this flag",
@@ -40,5 +43,6 @@ async fn main() -> anyhow::Result<()> {
         Commands::Template(template_args) => {
             template_command::handle_template_command(template_args, !app.no_cut).await
         }
+        Commands::Pulse(pulse_args) => pulse_command::handle_pulse_command(pulse_args).await,
     }
 }

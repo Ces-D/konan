@@ -162,8 +162,7 @@ pub async fn handle_connect_command(config: KonanIotConfig) -> anyhow::Result<()
                                 MqttTopic::Outline => {
                                     let params: OutlineTemplate =
                                         serde_json::from_slice(&msg.payload).unwrap();
-                                    let date_local =
-                                        params.date.map(|d| d.with_timezone(&Local));
+                                    let date_local = params.date.map(|d| d.with_timezone(&Local));
                                     tokio::task::spawn_blocking(move || {
                                         crate::print_ops::print_box_template(
                                             true,
