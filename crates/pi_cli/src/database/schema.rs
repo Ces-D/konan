@@ -4,6 +4,10 @@ use cli_shared::PrintJob;
 use rrule::{Unvalidated, Validated};
 use serde::{Deserialize, Serialize};
 
+pub fn nyc_tz() -> rrule::Tz {
+    rrule::Tz::America__New_York
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct NewPulse {
     name: String,
@@ -14,7 +18,7 @@ pub struct NewPulse {
 }
 impl NewPulse {
     pub fn new(name: String, command: PrintJob, r_rule: rrule::RRule<Unvalidated>) -> Result<Self> {
-        let now = Utc::now().with_timezone(&rrule::Tz::UTC);
+        let now = Utc::now().with_timezone(&nyc_tz());
         let validated = r_rule.validate(now)?;
         Ok(Self {
             name,
@@ -69,7 +73,7 @@ pub struct Pulse {
 
 impl Pulse {
     pub fn validated_rrule(&self) -> Result<rrule::RRule<Validated>, rrule::RRuleError> {
-        let dt = self.start_date.with_timezone(&rrule::Tz::UTC);
+        let dt = self.start_date.with_timezone(&nyc_tz());
         self.r_rule.clone().validate(dt)
     }
 }
@@ -86,8 +90,8 @@ impl TryFrom<Pulse> for CompactPulse {
 
     fn try_from(value: Pulse) -> Result<Self> {
         let validated = value.validated_rrule()?;
-        let now = Utc::now().with_timezone(&rrule::Tz::UTC);
-        let dt_start = value.start_date.with_timezone(&rrule::Tz::UTC);
+        let now = Utc::now().with_timezone(&nyc_tz());
+        let dt_start = value.start_date.with_timezone(&nyc_tz());
 
         let rrule_set = rrule::RRuleSet::new(dt_start).rrule(validated);
         let next = rrule_set

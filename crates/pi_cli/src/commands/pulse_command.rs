@@ -1,6 +1,6 @@
 use crate::database::{
     self, get_all_pulses,
-    schema::{CompactPulse, NewPulse, Pulse},
+    schema::{nyc_tz, CompactPulse, NewPulse, Pulse},
     update_last_run,
 };
 use anyhow::{Context, Result};
@@ -111,10 +111,10 @@ fn should_run(pulse: &Pulse, now: &chrono::DateTime<Utc>, ds_start: DateTime<Utc
         }
     };
 
-    let after = pulse.last_run.with_timezone(&rrule::Tz::UTC);
-    let before = now.with_timezone(&rrule::Tz::UTC);
+    let after = pulse.last_run.with_timezone(&nyc_tz());
+    let before = now.with_timezone(&nyc_tz());
 
-    let rrule_set = rrule::RRuleSet::new(ds_start.with_timezone(&rrule::Tz::UTC)).rrule(rr);
+    let rrule_set = rrule::RRuleSet::new(ds_start.with_timezone(&nyc_tz())).rrule(rr);
 
     !rrule_set
         .after(after)
