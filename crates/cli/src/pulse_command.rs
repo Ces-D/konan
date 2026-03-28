@@ -1,7 +1,7 @@
 use crate::{command_builder::PiCommandBuilder, file_command::FileArgs, network::Network};
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use cli_shared::{PrintJob, TemplateArgs};
+use cli_shared::{PrintTask, TemplateArgs};
 
 #[derive(Debug, Parser)]
 pub struct PulseArgs {
@@ -35,7 +35,7 @@ pub enum PulseDirectCommand {
     List,
 }
 
-pub async fn handle_pulse_command(args: PulseArgs) -> Result<()> {
+pub async fn handle_pulse_command(args: PulseArgs, cut: bool) -> Result<()> {
     let mut conn = Network::new()?;
     match args.command {
         PulseDirectCommand::AddTemplate(template_args) => {
@@ -46,29 +46,7 @@ pub async fn handle_pulse_command(args: PulseArgs) -> Result<()> {
                 .rrule
                 .ok_or_else(|| anyhow::anyhow!("--rrule is required when adding a pulse"))?;
 
-            let print_job: PrintJob = match template_args.command {
-                cli_shared::TemplateCommand::Box {
-                    rows,
-                    date,
-                    banner,
-                    lined,
-                } => PrintJob::BoxTemplate {
-                    rows,
-                    lined,
-                    banner,
-                    date,
-                },
-                cli_shared::TemplateCommand::HabitTracker {
-                    habit,
-                    start_date,
-                    time_period,
-                } => PrintJob::HabitTracker {
-                    habit,
-                    start_date,
-                    time_period,
-                },
-            };
-
+            let print_job = template_args.command.into_print_task(cut)?;
             let command_json: String = print_job.into();
             let cmd = PiCommandBuilder::new("pulse add")
                 .positional(&name)
@@ -85,7 +63,8 @@ pub async fn handle_pulse_command(args: PulseArgs) -> Result<()> {
                 .ok_or_else(|| anyhow::anyhow!("--rrule is required when adding a pulse"))?;
 
             let filename = conn.upload_pulse_file(&file_args.path)?;
-            let print_job: PrintJob = PrintJob::File {
+            let print_job = PrintTask::PulseFile {
+                cut,
                 filename,
                 rows: file_args.rows,
             };

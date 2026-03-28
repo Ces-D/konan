@@ -45,6 +45,7 @@ reqwest = "0.13.2"
 rrule = "0.14.0"
 rusqlite = { version = "0.39.0", features = ["bundled"] }
 serde_rusqlite = "0.42.0"
+fs4 = "0.13.1"
 
 rongta = { path = "./crates/rongta" }
 blueprint = { path = "./crates/blueprint" }

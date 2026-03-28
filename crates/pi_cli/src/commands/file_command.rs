@@ -1,5 +1,6 @@
+use crate::print_ops::enqueue_print;
 use clap::Parser;
-use cli_shared::RemoteFile;
+use cli_shared::{PrintTask, RemoteFile};
 
 #[derive(Debug, Parser)]
 pub struct FileArgs {
@@ -10,6 +11,11 @@ pub struct FileArgs {
 }
 
 pub async fn handle_file_command(args: FileArgs, cut: bool) -> anyhow::Result<String> {
-    crate::print_ops::print_file(args.file, cut, args.rows)?;
+    enqueue_print(PrintTask::File {
+        file: args.file,
+        cut,
+        rows: args.rows,
+    })
+    .await;
     Ok("File printed successfully.".to_string())
 }

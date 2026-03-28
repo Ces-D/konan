@@ -35,6 +35,7 @@ pub struct App {
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     cli_shared::init_logging("pi_cli");
+    print_ops::init_queue();
     let app = App::parse();
     let config = Config::get()?;
     match app.command {

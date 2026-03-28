@@ -62,8 +62,8 @@ pub fn delete_pulse(pulse_id: i64) -> Result<()> {
         )
         .ok();
 
-    if let Some(Ok(cli_shared::PrintJob::File { filename, .. })) =
-        command.map(cli_shared::PrintJob::try_from)
+    if let Some(Ok(cli_shared::PrintTask::PulseFile { filename, .. })) =
+        command.map(cli_shared::PrintTask::try_from)
     {
         let path = crate::config::pulse_files_dir()?.join(&filename);
         let _ = std::fs::remove_file(path);

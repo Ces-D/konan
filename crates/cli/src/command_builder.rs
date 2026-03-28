@@ -1,6 +1,10 @@
 use clap::ValueEnum;
 use std::fmt::Display;
 
+fn shell_escape(value: &str) -> String {
+    value.replace('\'', "'\\''")
+}
+
 pub struct PiCommandBuilder {
     parts: Vec<String>,
 }
@@ -13,7 +17,7 @@ impl PiCommandBuilder {
     }
 
     pub fn positional(mut self, value: &str) -> Self {
-        self.parts.push(format!("'{value}'"));
+        self.parts.push(format!("'{}'", shell_escape(value)));
         self
     }
 
@@ -26,7 +30,8 @@ impl PiCommandBuilder {
 
     pub fn named<V: Display>(mut self, name: &str, value: Option<V>) -> Self {
         if let Some(v) = value {
-            self.parts.push(format!("--{name} '{v}'"));
+            self.parts
+                .push(format!("--{name} '{}'", shell_escape(&v.to_string())));
         }
         self
     }
@@ -92,6 +97,22 @@ mod tests {
             cmd,
             "pi_cli template habit-tracker 'Exercise' --start-date '2025-01-01' --time-period two-week --no-cut"
         );
+    }
+
+    #[test]
+    fn test_positional_with_single_quote() {
+        let cmd = PiCommandBuilder::new("pulse add")
+            .positional("it's a test")
+            .build();
+        assert_eq!(cmd, "pi_cli pulse add 'it'\\''s a test'");
+    }
+
+    #[test]
+    fn test_named_with_single_quote() {
+        let cmd = PiCommandBuilder::new("template box")
+            .named("banner", Some("it's a banner"))
+            .build();
+        assert_eq!(cmd, "pi_cli template box --banner 'it'\\''s a banner'");
     }
 
     #[test]

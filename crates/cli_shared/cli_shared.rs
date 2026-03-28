@@ -1,9 +1,68 @@
 mod template;
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 pub use template::{DateBanner, TemplateArgs, TemplateCommand, TimePeriod};
-mod pulse;
-pub use pulse::PrintJob;
 
-#[derive(clap::ValueEnum, Clone, Copy, Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum PrintTask {
+    BoxTemplate {
+        cut: bool,
+        rows: Option<u32>,
+        lined: bool,
+        banner: Option<String>,
+        date: Option<DateTime<Utc>>,
+    },
+    HabitTracker {
+        cut: bool,
+        habit: String,
+        start_date: DateTime<Utc>,
+        end_date: DateTime<Utc>,
+    },
+    Markdown {
+        cut: bool,
+        content: String,
+        rows: Option<u32>,
+    },
+    Text {
+        cut: bool,
+        content: String,
+        rows: Option<u32>,
+    },
+    PulseFile {
+        cut: bool,
+        filename: String,
+        rows: Option<u32>,
+    },
+    File {
+        file: RemoteFile,
+        cut: bool,
+        rows: Option<u32>,
+    },
+}
+
+impl From<PrintTask> for String {
+    fn from(job: PrintTask) -> Self {
+        serde_json::to_string(&job).expect("failed to serialize PrintTask")
+    }
+}
+
+impl TryFrom<String> for PrintTask {
+    type Error = serde_json::Error;
+
+    fn try_from(s: String) -> Result<Self, Self::Error> {
+        serde_json::from_str(&s)
+    }
+}
+
+impl TryFrom<&str> for PrintTask {
+    type Error = serde_json::Error;
+
+    fn try_from(s: &str) -> Result<Self, Self::Error> {
+        serde_json::from_str(s)
+    }
+}
+
+#[derive(clap::ValueEnum, Clone, Copy, Debug, Serialize, Deserialize)]
 pub enum RemoteFile {
     Markdown,
     Text,
@@ -23,7 +82,7 @@ pub const APPLICATION_STORAGE_DIR: &str = ".local/share/konan";
 pub const PI_CLI_PULSE_DIR: &str = "pulse_files";
 
 /// Core crates shared across cli apps
-pub const CORE_MEMBERS: [&str; 4] = ["rongta", "tiptap", "blueprint", "cli_shared"];
+pub const CORE_MEMBERS: [&str; 3] = ["rongta", "blueprint", "cli_shared"];
 
 pub fn init_logging(package: &str) {
     // Get global log level from env or use default

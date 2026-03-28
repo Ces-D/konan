@@ -1,6 +1,6 @@
 use super::BoxPattern;
 use anyhow::Result;
-use chrono::{DateTime, Local};
+use chrono::{DateTime, Utc};
 use rongta::{
     RongtaPrinter, SupportedDriver,
     elements::{Justify, TextSize},
@@ -8,7 +8,7 @@ use rongta::{
 
 pub struct BoxTemplateBuilder {
     builder: RongtaPrinter,
-    date: Option<DateTime<Local>>,
+    date: Option<DateTime<Utc>>,
     banner: Option<String>,
     rows: u32,
     lined: bool,
@@ -27,7 +27,7 @@ impl BoxTemplateBuilder {
         }
     }
 
-    pub fn set_date_banner(&mut self, date: DateTime<Local>) -> &mut Self {
+    pub fn set_date_banner(&mut self, date: DateTime<Utc>) -> &mut Self {
         self.date = Some(date);
         self
     }

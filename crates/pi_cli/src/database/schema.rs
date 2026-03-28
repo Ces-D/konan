@@ -1,6 +1,6 @@
 use anyhow::Result;
 use chrono::{TimeZone, Utc};
-use cli_shared::PrintJob;
+use cli_shared::PrintTask;
 use rrule::{Unvalidated, Validated};
 use serde::{Deserialize, Serialize};
 
@@ -17,7 +17,11 @@ pub struct NewPulse {
     last_run: i64,
 }
 impl NewPulse {
-    pub fn new(name: String, command: PrintJob, r_rule: rrule::RRule<Unvalidated>) -> Result<Self> {
+    pub fn new(
+        name: String,
+        command: PrintTask,
+        r_rule: rrule::RRule<Unvalidated>,
+    ) -> Result<Self> {
         let now = Utc::now().with_timezone(&nyc_tz());
         let validated = r_rule.validate(now)?;
         Ok(Self {
@@ -34,9 +38,9 @@ mod de {
     use super::*;
     use serde::Deserializer;
 
-    pub fn print_job<'de, D: Deserializer<'de>>(deserializer: D) -> Result<PrintJob, D::Error> {
+    pub fn print_task<'de, D: Deserializer<'de>>(deserializer: D) -> Result<PrintTask, D::Error> {
         let s = String::deserialize(deserializer)?;
-        PrintJob::try_from(s).map_err(serde::de::Error::custom)
+        PrintTask::try_from(s).map_err(serde::de::Error::custom)
     }
 
     pub fn timestamp<'de, D: Deserializer<'de>>(
@@ -61,8 +65,8 @@ mod de {
 pub struct Pulse {
     pub id: i64,
     pub name: String,
-    #[serde(deserialize_with = "de::print_job")]
-    pub command: PrintJob,
+    #[serde(deserialize_with = "de::print_task")]
+    pub command: PrintTask,
     #[serde(deserialize_with = "de::timestamp")]
     pub start_date: chrono::DateTime<Utc>,
     #[serde(deserialize_with = "de::rrule")]

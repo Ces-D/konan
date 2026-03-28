@@ -1,6 +1,7 @@
-use crate::config::KonanIotConfig;
+use crate::{config::KonanIotConfig, print_ops::enqueue_print};
 use anyhow::bail;
 use chrono::{DateTime, Local, NaiveTime, Utc};
+use cli_shared::PrintTask;
 use rumqttc::{AsyncClient, ConnectionError, MqttOptions, QoS, TlsConfiguration, Transport};
 use rustls::pki_types::{CertificateDer, PrivateKeyDer, PrivatePkcs1KeyDer, PrivatePkcs8KeyDer};
 use serde::{Deserialize, Serialize};
@@ -139,39 +140,36 @@ pub async fn handle_connect_command(config: KonanIotConfig) -> anyhow::Result<()
                                 MqttTopic::Habits => {
                                     let params: HabitTrackerTemplate =
                                         serde_json::from_slice(&msg.payload).unwrap();
-                                    tokio::task::spawn_blocking(move || {
-                                        crate::print_ops::print_habit_tracker(
-                                            true,
-                                            params.habit,
-                                            params.start_date,
-                                            params.end_date,
-                                        )
-                                    });
+                                    enqueue_print(PrintTask::HabitTracker {
+                                        cut: true,
+                                        habit: params.habit,
+                                        start_date: params.start_date,
+                                        end_date: params.end_date,
+                                    })
+                                    .await;
                                 }
                                 MqttTopic::Message => {
                                     let params: PrintableMessage =
                                         serde_json::from_slice(&msg.payload).unwrap();
-                                    tokio::task::spawn_blocking(move || {
-                                        crate::print_ops::print_markdown(
-                                            true,
-                                            &params.content,
-                                            params.rows,
-                                        )
-                                    });
+                                    enqueue_print(PrintTask::Markdown {
+                                        cut: true,
+                                        content: params.content,
+                                        rows: params.rows,
+                                    })
+                                    .await;
                                 }
                                 MqttTopic::Outline => {
                                     let params: OutlineTemplate =
                                         serde_json::from_slice(&msg.payload).unwrap();
-                                    let date_local = params.date.map(|d| d.with_timezone(&Local));
-                                    tokio::task::spawn_blocking(move || {
-                                        crate::print_ops::print_box_template(
-                                            true,
-                                            params.rows,
-                                            params.lined.unwrap_or_default(),
-                                            params.banner,
-                                            date_local,
-                                        )
-                                    });
+                                    let date = params.date;
+                                    enqueue_print(PrintTask::BoxTemplate {
+                                        cut: true,
+                                        rows: params.rows,
+                                        lined: params.lined.unwrap_or_default(),
+                                        banner: params.banner,
+                                        date,
+                                    })
+                                    .await;
                                 }
                             }
                         } else {

@@ -1,12 +1,15 @@
-use crate::database::{
-    self, get_all_pulses,
-    schema::{nyc_tz, CompactPulse, NewPulse, Pulse},
-    update_last_run,
+use crate::{
+    database::{
+        self, get_all_pulses,
+        schema::{CompactPulse, NewPulse, Pulse, nyc_tz},
+        update_last_run,
+    },
+    print_ops::enqueue_print,
 };
 use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
 use clap::{Parser, Subcommand};
-use cli_shared::PrintJob;
+use cli_shared::PrintTask;
 use std::str::FromStr;
 
 #[derive(Debug, Parser)]
@@ -44,15 +47,10 @@ pub async fn handle_pulse_command(args: PulseArgs) -> Result<String> {
                     continue;
                 }
 
-                if let Err(e) = execute_print_job(&pulse.command) {
-                    let msg = format!("Error running pulse '{}': {e}", pulse.name);
-                    print_error(&msg)?;
-                    results.push(msg);
-                    continue;
-                }
+                enqueue_print(pulse.command).await;
                 if let Err(e) = update_last_run(pulse.id) {
                     let msg = format!("Error updating last_run for pulse '{}': {e}", pulse.name);
-                    print_error(&msg)?;
+                    print_error(&msg).await;
                     results.push(msg);
                     continue;
                 }
@@ -84,9 +82,9 @@ pub async fn handle_pulse_command(args: PulseArgs) -> Result<String> {
             rrule,
             command,
         } => {
-            let print_job = PrintJob::try_from(command)?;
+            let print_task = PrintTask::try_from(command)?;
             let unvalidated_rrule = rrule::RRule::from_str(&rrule)?;
-            let pulse = NewPulse::new(name.clone(), print_job, unvalidated_rrule)?;
+            let pulse = NewPulse::new(name.clone(), print_task, unvalidated_rrule)?;
             database::insert_pulse(&pulse)?;
             Ok(format!("Pulse '{name}' added successfully."))
         }
@@ -97,9 +95,14 @@ pub async fn handle_pulse_command(args: PulseArgs) -> Result<String> {
     }
 }
 
-fn print_error(message: &str) -> Result<()> {
+async fn print_error(message: &str) {
     eprintln!("{message}");
-    crate::print_ops::print_text(true, message, None)
+    enqueue_print(PrintTask::Text {
+        cut: true,
+        content: message.to_string(),
+        rows: None,
+    })
+    .await;
 }
 
 fn should_run(pulse: &Pulse, now: &chrono::DateTime<Utc>, ds_start: DateTime<Utc>) -> bool {
@@ -122,37 +125,4 @@ fn should_run(pulse: &Pulse, now: &chrono::DateTime<Utc>, ds_start: DateTime<Utc
         .all(1)
         .dates
         .is_empty()
-}
-
-fn execute_print_job(job: &PrintJob) -> Result<()> {
-    match job {
-        PrintJob::BoxTemplate {
-            rows,
-            lined,
-            banner,
-            date,
-        } => {
-            let date_local = date.map(|d| d.into());
-            crate::print_ops::print_box_template(true, *rows, *lined, banner.clone(), date_local)
-        }
-        PrintJob::HabitTracker {
-            habit,
-            start_date,
-            time_period,
-        } => {
-            let start = if let Some(date_str) = start_date {
-                chrono::NaiveDate::parse_from_str(date_str, "%Y-%m-%d")?
-                    .and_hms_opt(0, 0, 0)
-                    .unwrap()
-                    .and_utc()
-            } else {
-                Utc::now()
-            };
-            let end = time_period.unwrap_or_default().into_end_date(start);
-            crate::print_ops::print_habit_tracker(true, habit.clone(), start, end)
-        }
-        PrintJob::File { filename, rows } => {
-            crate::print_ops::print_pulse_file(true, filename, *rows)
-        }
-    }
 }

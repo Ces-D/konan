@@ -1,4 +1,6 @@
-use chrono::{DateTime, Datelike, Days, Duration, Local, Months, Utc, Weekday};
+use crate::PrintTask;
+use anyhow::Context;
+use chrono::{DateTime, Datelike, Days, Duration, Months, Utc, Weekday};
 use clap::{Parser, Subcommand};
 use serde::{Deserialize, Serialize};
 
@@ -25,8 +27,8 @@ pub enum DateBanner {
 impl DateBanner {
     /// Calculate the next occurrence of a given weekday.
     /// If today is that weekday, returns next week's occurrence.
-    fn next_weekday(target: Weekday) -> DateTime<Local> {
-        let now = Local::now();
+    fn next_weekday(target: Weekday) -> DateTime<Utc> {
+        let now = Utc::now();
         let current = now.weekday().num_days_from_monday();
         let target_day = target.num_days_from_monday();
         let days_until = (target_day as i64 - current as i64 + 7) % 7;
@@ -34,11 +36,11 @@ impl DateBanner {
         now + chrono::Duration::days(days_until)
     }
 }
-impl From<DateBanner> for chrono::DateTime<Local> {
+impl From<DateBanner> for chrono::DateTime<Utc> {
     fn from(val: DateBanner) -> Self {
         match val {
-            DateBanner::Today => chrono::Local::now(),
-            DateBanner::Tomorrow => chrono::Local::now() + chrono::Duration::days(1),
+            DateBanner::Today => chrono::Utc::now(),
+            DateBanner::Tomorrow => chrono::Utc::now() + chrono::Duration::days(1),
             DateBanner::Mon => DateBanner::next_weekday(chrono::Weekday::Mon),
             DateBanner::Tue => DateBanner::next_weekday(chrono::Weekday::Tue),
             DateBanner::Wed => DateBanner::next_weekday(chrono::Weekday::Wed),
@@ -108,6 +110,47 @@ pub enum TemplateCommand {
         )]
         time_period: Option<TimePeriod>,
     },
+}
+
+impl TemplateCommand {
+    pub fn into_print_task(self, cut: bool) -> anyhow::Result<PrintTask> {
+        match self {
+            TemplateCommand::Box {
+                rows,
+                lined,
+                date,
+                banner,
+            } => Ok(PrintTask::BoxTemplate {
+                cut,
+                rows,
+                lined,
+                banner,
+                date: date.map(|d| d.into()),
+            }),
+            TemplateCommand::HabitTracker {
+                habit,
+                start_date,
+                time_period,
+            } => {
+                let start = if let Some(date_str) = start_date {
+                    chrono::NaiveDate::parse_from_str(&date_str, "%Y-%m-%d")
+                        .context("Invalid date format. Expected YYYY-MM-DD")?
+                        .and_hms_opt(0, 0, 0)
+                        .unwrap()
+                        .and_utc()
+                } else {
+                    chrono::Utc::now()
+                };
+                let end = time_period.unwrap_or_default().into_end_date(start);
+                Ok(PrintTask::HabitTracker {
+                    cut,
+                    habit,
+                    start_date: start,
+                    end_date: end,
+                })
+            }
+        }
+    }
 }
 
 #[derive(Debug, Parser)]

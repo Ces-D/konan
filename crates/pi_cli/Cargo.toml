@@ -21,6 +21,7 @@ toml.workspace = true
 rusqlite.workspace = true
 serde_rusqlite.workspace = true
 rrule.workspace = true
+fs4.workspace = true
 
 rongta.workspace = true
 blueprint.workspace = true

@@ -43,6 +43,8 @@ async fn main() -> anyhow::Result<()> {
         Commands::Template(template_args) => {
             template_command::handle_template_command(template_args, !app.no_cut).await
         }
-        Commands::Pulse(pulse_args) => pulse_command::handle_pulse_command(pulse_args).await,
+        Commands::Pulse(pulse_args) => {
+            pulse_command::handle_pulse_command(pulse_args, !app.no_cut).await
+        }
     }
 }
