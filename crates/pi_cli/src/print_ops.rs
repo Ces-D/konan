@@ -90,8 +90,7 @@ fn print_markdown(arg: DirectPrintOut) -> anyhow::Result<()> {
 }
 
 fn print_text(arg: DirectPrintOut) -> anyhow::Result<()> {
-    let mut interpreter = TextInterpreter::new(RongtaPrinter::new(arg.cut));
-    interpreter.print(&arg.content, arg.rows, driver())
+    TextInterpreter::print(&arg.content, arg.cut, driver())
 }
 
 fn print_box_template(arg: BoxTemplate) -> anyhow::Result<()> {

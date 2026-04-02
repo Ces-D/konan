@@ -1,22 +1,16 @@
 use anyhow::Result;
-use rongta::{RongtaPrinter, SupportedDriver};
+use rongta::SupportedDriver;
 
-pub struct TextInterpreter {
-    builder: RongtaPrinter,
-}
+pub struct TextInterpreter;
+
 impl TextInterpreter {
-    pub fn new(builder: RongtaPrinter) -> Self {
-        Self { builder }
-    }
-
-    pub fn print(
-        &mut self,
-        content: &str,
-        rows: Option<u32>,
-        driver: SupportedDriver,
-    ) -> Result<()> {
-        self.builder.add_content(content)?;
-        self.builder.print(rows, driver)?;
+    pub fn print(content: &str, cut: bool, driver: SupportedDriver) -> Result<()> {
+        let mut printer = rongta::build_any_printer(driver)?;
+        printer.write(content)?;
+        match cut {
+            true => printer.print_cut()?,
+            false => printer.print()?,
+        }
         log::info!("Text content printed");
         Ok(())
     }

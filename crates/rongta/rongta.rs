@@ -11,7 +11,7 @@ use escpos::{
 mod cp437;
 pub mod elements;
 mod line;
-mod printer;
+pub mod printer;
 
 pub const CPL: u8 = 48; // characters per line
 
@@ -133,26 +133,7 @@ impl RongtaPrinter {
     }
 
     pub fn print(&self, rows: Option<u32>, driver: SupportedDriver) -> Result<()> {
-        let mut printer = match driver {
-            SupportedDriver::Console => {
-                let driver = ConsoleDriver::open(true);
-                printer::AnyPrinter::Console(build_printer(driver)?)
-            }
-            SupportedDriver::Usb(vendor_id, product_id) => {
-                let driver = UsbDriver::open(vendor_id, product_id, None, None)
-                    .inspect_err(|_| {
-                        log::error!("Attempted to connect to {}:{}", vendor_id, product_id)
-                    })
-                    .with_context(|| "Failed to open usb driver")?;
-                printer::AnyPrinter::Usb(build_printer(driver)?)
-            }
-            SupportedDriver::Network(host, port) => {
-                let driver = NetworkDriver::open(&host, port, None)
-                    .inspect_err(|_| log::error!("Attempted to connect to {}:{}", host, port))
-                    .with_context(|| "Failed to open network driver")?;
-                printer::AnyPrinter::Network(build_printer(driver)?)
-            }
-        };
+        let mut printer = build_any_printer(driver)?;
         self.print_to(&mut printer, rows)
     }
 }
@@ -162,6 +143,29 @@ pub enum SupportedDriver {
     Console,
     Usb(u16, u16),
     Network(String, u16),
+}
+
+pub fn build_any_printer(driver: SupportedDriver) -> Result<printer::AnyPrinter> {
+    match driver {
+        SupportedDriver::Console => {
+            let driver = ConsoleDriver::open(true);
+            Ok(printer::AnyPrinter::Console(build_printer(driver)?))
+        }
+        SupportedDriver::Usb(vendor_id, product_id) => {
+            let driver = UsbDriver::open(vendor_id, product_id, None, None)
+                .inspect_err(|_| {
+                    log::error!("Attempted to connect to {}:{}", vendor_id, product_id)
+                })
+                .with_context(|| "Failed to open usb driver")?;
+            Ok(printer::AnyPrinter::Usb(build_printer(driver)?))
+        }
+        SupportedDriver::Network(host, port) => {
+            let driver = NetworkDriver::open(&host, port, None)
+                .inspect_err(|_| log::error!("Attempted to connect to {}:{}", host, port))
+                .with_context(|| "Failed to open network driver")?;
+            Ok(printer::AnyPrinter::Network(build_printer(driver)?))
+        }
+    }
 }
 
 fn build_printer<D>(driver: D) -> Result<Printer<D>>
