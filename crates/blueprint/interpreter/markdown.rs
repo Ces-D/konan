@@ -134,6 +134,7 @@ impl MarkdownInterpreter {
                 pulldown_cmark::Event::HardBreak => {
                     log::debug!("Event: HardBreak");
                     self.builder.new_line();
+                    self.builder.new_line();
                     continue;
                 }
                 pulldown_cmark::Event::Rule => {
