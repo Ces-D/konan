@@ -17,10 +17,6 @@ stop:
 	sudo systemctl stop $(SERVICE_IOT) || true
 	sudo systemctl stop $(TIMER) || true
 
-update:
-	@echo "Pulling latest from GitHub..."
-	git pull origin main
-
 build:
 	@echo "Building $(BINARY_NAME)..."
 	cargo build --$(BUILD_PROFILE) --package $(BINARY_NAME)

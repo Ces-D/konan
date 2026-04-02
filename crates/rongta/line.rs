@@ -8,10 +8,11 @@ pub struct Line {
 }
 impl Line {
     pub fn new(chars: Vec<elements::StyledChar>, justify_content: elements::Justify) -> Self {
+        let cached_width = chars.iter().map(|sc| sc.state.text_size.char_width()).sum();
         Self {
             chars,
             justify_content,
-            cached_width: 0,
+            cached_width,
         }
     }
     /// Find the character index where we should soft-wrap (at whitespace).
