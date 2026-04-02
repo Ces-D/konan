@@ -1,6 +1,6 @@
 use crate::command_builder::PiCommandBuilder;
 use anyhow::{Context, Result};
-use cli_shared::RemoteFile;
+use cli_shared::clap_enum::RemoteFile;
 use ssh2::Session;
 use std::{
     io::prelude::*,
@@ -98,19 +98,21 @@ impl Network {
         Ok((remote_file, mode, size))
     }
 
+    /// Build the remote path for a file in the printer files directory.
+    /// Keep in sync with pi_cli/src/config.rs -> printer_files_dir_path
+    fn remote_files_path(file_name: &str) -> String {
+        format!(
+            "{}/{}/{}",
+            cli_shared::APPLICATION_STORAGE_DIR,
+            "files",
+            file_name
+        )
+    }
+
     pub fn upload_file(&mut self, path: &PathBuf) -> Result<RemoteFile> {
         let (rf, mode, size) = Self::prepare_file(path)?;
-        let remote_path = format!("{}/{}", cli_shared::APPLICATION_STORAGE_DIR, rf.file_name());
-        let mut remote_file = self
-            .session
-            .scp_send(Path::new(&remote_path), mode, size, None)
-            .with_context(|| "Failed to send {} over secure copy protocol")?;
-        let local_file = std::fs::read(path)?;
-        remote_file.write_all(&local_file)?;
-        remote_file.send_eof()?;
-        remote_file.wait_eof()?;
-        remote_file.close()?;
-        remote_file.wait_close()?;
+        let remote_path = Self::remote_files_path(&rf.file_name());
+        self.scp_upload(path, &remote_path, mode, size)?;
         Ok(rf)
     }
 
@@ -120,22 +122,22 @@ impl Network {
             .file_name()
             .context("Path has no file name")?
             .to_string_lossy();
-        let remote_path = format!(
-            "{}/{}/{}",
-            cli_shared::APPLICATION_STORAGE_DIR,
-            cli_shared::PI_CLI_PULSE_DIR,
-            file_name
-        );
+        let remote_path = Self::remote_files_path(&file_name);
+        self.scp_upload(path, &remote_path, mode, size)?;
+        Ok(file_name.into_owned())
+    }
+
+    fn scp_upload(&mut self, local: &Path, remote: &str, mode: i32, size: u64) -> Result<()> {
         let mut remote_file = self
             .session
-            .scp_send(Path::new(&remote_path), mode, size, None)
-            .with_context(|| format!("Failed to send '{}' over secure copy protocol", file_name))?;
-        let local_file = std::fs::read(path)?;
+            .scp_send(Path::new(remote), mode, size, None)
+            .with_context(|| format!("Failed to send '{}' over secure copy protocol", remote))?;
+        let local_file = std::fs::read(local)?;
         remote_file.write_all(&local_file)?;
         remote_file.send_eof()?;
         remote_file.wait_eof()?;
         remote_file.close()?;
         remote_file.wait_close()?;
-        Ok(file_name.into_owned())
+        Ok(())
     }
 }

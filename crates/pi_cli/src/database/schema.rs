@@ -1,6 +1,6 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use chrono::{TimeZone, Utc};
-use cli_shared::PrintTask;
+use cli_shared::PulseRecipe;
 use rrule::{Unvalidated, Validated};
 use serde::{Deserialize, Serialize};
 
@@ -19,14 +19,14 @@ pub struct NewPulse {
 impl NewPulse {
     pub fn new(
         name: String,
-        command: PrintTask,
+        command: PulseRecipe,
         r_rule: rrule::RRule<Unvalidated>,
     ) -> Result<Self> {
         let now = Utc::now().with_timezone(&nyc_tz());
         let validated = r_rule.validate(now)?;
         Ok(Self {
             name,
-            command: command.into(),
+            command: command.to_json()?,
             start_date: now.timestamp(),
             r_rule: validated.to_string(),
             last_run: now.timestamp(),
@@ -37,11 +37,6 @@ impl NewPulse {
 mod de {
     use super::*;
     use serde::Deserializer;
-
-    pub fn print_task<'de, D: Deserializer<'de>>(deserializer: D) -> Result<PrintTask, D::Error> {
-        let s = String::deserialize(deserializer)?;
-        PrintTask::try_from(s).map_err(serde::de::Error::custom)
-    }
 
     pub fn timestamp<'de, D: Deserializer<'de>>(
         deserializer: D,
@@ -65,8 +60,7 @@ mod de {
 pub struct Pulse {
     pub id: i64,
     pub name: String,
-    #[serde(deserialize_with = "de::print_task")]
-    pub command: PrintTask,
+    pub command: String,
     #[serde(deserialize_with = "de::timestamp")]
     pub start_date: chrono::DateTime<Utc>,
     #[serde(deserialize_with = "de::rrule")]
@@ -79,6 +73,11 @@ impl Pulse {
     pub fn validated_rrule(&self) -> Result<rrule::RRule<Validated>, rrule::RRuleError> {
         let dt = self.start_date.with_timezone(&nyc_tz());
         self.r_rule.clone().validate(dt)
+    }
+
+    pub fn parsed_command(&self) -> Result<PulseRecipe> {
+        PulseRecipe::from_json(&self.command)
+            .with_context(|| format!("Invalid command for pulse '{}'", self.name))
     }
 }
 

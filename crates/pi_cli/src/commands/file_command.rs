@@ -1,6 +1,6 @@
 use crate::print_ops::enqueue_print;
 use clap::Parser;
-use cli_shared::{PrintTask, RemoteFile};
+use cli_shared::{PrintTask, clap_enum::RemoteFile, tasks::KonanFile};
 
 #[derive(Debug, Parser)]
 pub struct FileArgs {
@@ -11,11 +11,11 @@ pub struct FileArgs {
 }
 
 pub async fn handle_file_command(args: FileArgs, cut: bool) -> anyhow::Result<String> {
-    enqueue_print(PrintTask::File {
-        file: args.file,
+    enqueue_print(PrintTask::File(KonanFile {
+        name: args.file.file_name(),
         cut,
         rows: args.rows,
-    })
+    }))
     .await;
     Ok("File printed successfully.".to_string())
 }

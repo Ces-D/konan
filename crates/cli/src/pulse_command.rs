@@ -1,7 +1,7 @@
 use crate::{command_builder::PiCommandBuilder, file_command::FileArgs, network::Network};
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use cli_shared::{PrintTask, TemplateArgs};
+use cli_shared::{PulseRecipe, TemplateArgs, tasks, template_command::TemplateCommand};
 
 #[derive(Debug, Parser)]
 pub struct PulseArgs {
@@ -46,8 +46,28 @@ pub async fn handle_pulse_command(args: PulseArgs, cut: bool) -> Result<()> {
                 .rrule
                 .ok_or_else(|| anyhow::anyhow!("--rrule is required when adding a pulse"))?;
 
-            let print_job = template_args.command.into_print_task(cut)?;
-            let command_json: String = print_job.into();
+            let recipe = match template_args.command {
+                TemplateCommand::Box {
+                    rows,
+                    date,
+                    banner,
+                    lined,
+                } => PulseRecipe::BoxTemplate(tasks::BoxTemplatePulseRecipe {
+                    cut,
+                    rows,
+                    lined,
+                    banner,
+                    date,
+                }),
+                TemplateCommand::HabitTracker {
+                    habit, time_period, ..
+                } => PulseRecipe::HabitTracker(tasks::HabitTrackerPulseRecipe {
+                    cut,
+                    habit,
+                    time_period: time_period.unwrap_or_default(),
+                }),
+            };
+            let command_json = recipe.to_json()?;
             let cmd = PiCommandBuilder::new("pulse add")
                 .positional(&name)
                 .positional(&rrule)
@@ -63,13 +83,13 @@ pub async fn handle_pulse_command(args: PulseArgs, cut: bool) -> Result<()> {
                 .ok_or_else(|| anyhow::anyhow!("--rrule is required when adding a pulse"))?;
 
             let filename = conn.upload_pulse_file(&file_args.path)?;
-            let print_job = PrintTask::PulseFile {
+            let recipe = PulseRecipe::File(tasks::KonanFile {
                 cut,
-                filename,
+                name: filename,
                 rows: file_args.rows,
-            };
+            });
 
-            let command_json: String = print_job.into();
+            let command_json = recipe.to_json()?;
             let cmd = PiCommandBuilder::new("pulse add")
                 .positional(&name)
                 .positional(&rrule)

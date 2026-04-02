@@ -1,15 +1,15 @@
 use crate::{
     database::{
-        self, get_all_pulses,
+        delete_pulse, get_all_pulses, insert_pulse,
         schema::{CompactPulse, NewPulse, Pulse, nyc_tz},
         update_last_run,
     },
     print_ops::enqueue_print,
 };
 use anyhow::{Context, Result};
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use clap::{Parser, Subcommand};
-use cli_shared::PrintTask;
+use cli_shared::{PrintTask, PulseRecipe, tasks::DirectPrintOut};
 use std::str::FromStr;
 
 #[derive(Debug, Parser)]
@@ -43,11 +43,19 @@ pub async fn handle_pulse_command(args: PulseArgs) -> Result<String> {
             let now = Utc::now();
             let mut results: Vec<String> = Vec::new();
             for pulse in pulses {
-                if !should_run(&pulse, &now, pulse.start_date) {
+                if !should_run(&pulse, &now) {
                     continue;
                 }
-
-                enqueue_print(pulse.command).await;
+                let task: PrintTask = match pulse.parsed_command() {
+                    Ok(recipe) => recipe.into(),
+                    Err(e) => {
+                        let msg = format!("Error parsing command for pulse '{}': {e}", pulse.name);
+                        print_error(&msg).await;
+                        results.push(msg);
+                        continue;
+                    }
+                };
+                enqueue_print(task).await;
                 if let Err(e) = update_last_run(pulse.id) {
                     let msg = format!("Error updating last_run for pulse '{}': {e}", pulse.name);
                     print_error(&msg).await;
@@ -82,14 +90,15 @@ pub async fn handle_pulse_command(args: PulseArgs) -> Result<String> {
             rrule,
             command,
         } => {
-            let print_task = PrintTask::try_from(command)?;
+            let recipe = PulseRecipe::from_json(&command)
+                .with_context(|| format!("Invalid pulse command JSON: {command}"))?;
             let unvalidated_rrule = rrule::RRule::from_str(&rrule)?;
-            let pulse = NewPulse::new(name.clone(), print_task, unvalidated_rrule)?;
-            database::insert_pulse(&pulse)?;
+            let pulse = NewPulse::new(name.clone(), recipe, unvalidated_rrule)?;
+            insert_pulse(&pulse)?;
             Ok(format!("Pulse '{name}' added successfully."))
         }
         PulseCommand::Delete { id } => {
-            database::delete_pulse(id)?;
+            delete_pulse(id)?;
             Ok(format!("Pulse '{id}' deleted successfully."))
         }
     }
@@ -97,15 +106,15 @@ pub async fn handle_pulse_command(args: PulseArgs) -> Result<String> {
 
 async fn print_error(message: &str) {
     eprintln!("{message}");
-    enqueue_print(PrintTask::Text {
+    enqueue_print(PrintTask::Text(DirectPrintOut {
         cut: true,
         content: message.to_string(),
         rows: None,
-    })
+    }))
     .await;
 }
 
-fn should_run(pulse: &Pulse, now: &chrono::DateTime<Utc>, ds_start: DateTime<Utc>) -> bool {
+fn should_run(pulse: &Pulse, now: &chrono::DateTime<Utc>) -> bool {
     let rr = match pulse.validated_rrule() {
         Ok(r) => r,
         Err(e) => {
@@ -117,7 +126,7 @@ fn should_run(pulse: &Pulse, now: &chrono::DateTime<Utc>, ds_start: DateTime<Utc
     let after = pulse.last_run.with_timezone(&nyc_tz());
     let before = now.with_timezone(&nyc_tz());
 
-    let rrule_set = rrule::RRuleSet::new(ds_start.with_timezone(&nyc_tz())).rrule(rr);
+    let rrule_set = rrule::RRuleSet::new(pulse.start_date.with_timezone(&nyc_tz())).rrule(rr);
 
     !rrule_set
         .after(after)

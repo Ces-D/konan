@@ -36,7 +36,7 @@ impl Config {
     }
 }
 
-pub fn application_storage_path() -> Result<PathBuf> {
+fn application_storage_path() -> Result<PathBuf> {
     let path = std::env::home_dir()
         .context("Could not determine home directory")?
         .join(cli_shared::APPLICATION_STORAGE_DIR);
@@ -52,11 +52,16 @@ pub fn pulse_database_path() -> Result<PathBuf> {
     Ok(db_path)
 }
 
-pub fn pulse_files_dir() -> Result<PathBuf> {
-    let pulse_path = application_storage_path()?.join(cli_shared::PI_CLI_PULSE_DIR);
-    if !pulse_path.exists() {
-        std::fs::create_dir_all(&pulse_path)
-            .with_context(|| format!("Failed to create directory '{}'", pulse_path.display()))?;
+pub fn printer_lock_path() -> Result<PathBuf> {
+    let storage = application_storage_path()?;
+    Ok(storage.join("printer.lock"))
+}
+
+pub fn printer_files_dir_path() -> Result<PathBuf> {
+    let files_path = application_storage_path()?.join("files");
+    if !files_path.exists() {
+        std::fs::create_dir_all(&files_path)
+            .with_context(|| format!("Failed to create directory '{}'", files_path.display()))?;
     }
-    Ok(pulse_path)
+    Ok(files_path)
 }

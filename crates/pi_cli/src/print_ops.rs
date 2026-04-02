@@ -1,5 +1,5 @@
-use crate::config::{application_storage_path, pulse_files_dir};
-use anyhow::Context;
+use crate::config::{printer_files_dir_path, printer_lock_path};
+use anyhow::{Context, bail};
 use blueprint::{
     interpreter::{markdown::MarkdownInterpreter, text::TextInterpreter},
     template::{
@@ -7,8 +7,10 @@ use blueprint::{
         habit_tracker::HabitTrackerTemplateBuilder,
     },
 };
-use chrono::{DateTime, Utc};
-use cli_shared::{PrintTask, RemoteFile};
+use cli_shared::{
+    PrintTask,
+    tasks::{BoxTemplate, DirectPrintOut, HabitTrackerTemplate, KonanFile},
+};
 use fs4::fs_std::FileExt;
 use rongta::{RongtaPrinter, SupportedDriver};
 use std::{fs::OpenOptions, sync::OnceLock};
@@ -34,27 +36,11 @@ pub fn init_queue() {
             };
 
             let result = match task {
-                PrintTask::BoxTemplate {
-                    cut,
-                    rows,
-                    lined,
-                    banner,
-                    date,
-                } => print_box_template(cut, rows, lined, banner, date),
-                PrintTask::HabitTracker {
-                    cut,
-                    habit,
-                    start_date,
-                    end_date,
-                } => print_habit_tracker(cut, habit, start_date, end_date),
-                PrintTask::Markdown { cut, content, rows } => print_markdown(cut, &content, rows),
-                PrintTask::Text { cut, content, rows } => print_text(cut, &content, rows),
-                PrintTask::PulseFile {
-                    cut,
-                    filename,
-                    rows,
-                } => print_pulse_file(cut, &filename, rows),
-                PrintTask::File { file, cut, rows } => print_remote_file(file, cut, rows),
+                PrintTask::BoxTemplate(template) => print_box_template(template),
+                PrintTask::HabitTracker(template) => print_habit_tracker(template),
+                PrintTask::Markdown(template) => print_markdown(template),
+                PrintTask::Text(template) => print_text(template),
+                PrintTask::File(template) => print_file(template),
             };
 
             if let Err(e) = lock_file.unlock() {
@@ -86,7 +72,7 @@ fn driver() -> SupportedDriver {
 }
 
 fn acquire_printer_lock() -> anyhow::Result<std::fs::File> {
-    let lock_path = application_storage_path()?.join("printer.lock");
+    let lock_path = printer_lock_path()?;
     let file = OpenOptions::new()
         .create(true)
         .truncate(true)
@@ -98,65 +84,59 @@ fn acquire_printer_lock() -> anyhow::Result<std::fs::File> {
     Ok(file)
 }
 
-fn print_markdown(cut: bool, content: &str, rows: Option<u32>) -> anyhow::Result<()> {
-    let mut interpreter = MarkdownInterpreter::new(RongtaPrinter::new(cut));
-    interpreter.print(content, rows, driver())
+fn print_markdown(arg: DirectPrintOut) -> anyhow::Result<()> {
+    let mut interpreter = MarkdownInterpreter::new(RongtaPrinter::new(arg.cut));
+    interpreter.print(&arg.content, arg.rows, driver())
 }
 
-fn print_text(cut: bool, content: &str, rows: Option<u32>) -> anyhow::Result<()> {
-    let mut interpreter = TextInterpreter::new(RongtaPrinter::new(cut));
-    interpreter.print(content, rows, driver())
+fn print_text(arg: DirectPrintOut) -> anyhow::Result<()> {
+    let mut interpreter = TextInterpreter::new(RongtaPrinter::new(arg.cut));
+    interpreter.print(&arg.content, arg.rows, driver())
 }
 
-fn print_box_template(
-    cut: bool,
-    rows: Option<u32>,
-    lined: bool,
-    banner: Option<String>,
-    date: Option<DateTime<Utc>>,
-) -> anyhow::Result<()> {
+fn print_box_template(arg: BoxTemplate) -> anyhow::Result<()> {
     let pattern = get_random_box_pattern()?;
-    let builder = RongtaPrinter::new(cut);
+    let builder = RongtaPrinter::new(arg.cut);
     let mut template = BoxTemplateBuilder::new(builder, pattern);
     template
-        .set_rows(rows.unwrap_or(29))
-        .set_lined(lined)
-        .set_banner(banner);
-    if let Some(d) = date {
+        .set_rows(arg.rows.unwrap_or(29))
+        .set_lined(arg.lined)
+        .set_banner(arg.banner);
+    if let Some(d) = arg.date {
         template.set_date_banner(d);
     }
     template.print(driver())
 }
 
-fn print_habit_tracker(
-    cut: bool,
-    habit: String,
-    start_date: DateTime<Utc>,
-    end_date: DateTime<Utc>,
-) -> anyhow::Result<()> {
+fn print_habit_tracker(arg: HabitTrackerTemplate) -> anyhow::Result<()> {
     let pattern = get_random_box_pattern()?;
-    let builder = RongtaPrinter::new(cut);
+    let builder = RongtaPrinter::new(arg.cut);
     let mut template =
-        HabitTrackerTemplateBuilder::new(builder, pattern, habit, start_date, end_date);
+        HabitTrackerTemplateBuilder::new(builder, pattern, arg.habit, arg.start_date, arg.end_date);
     template.print(driver())
 }
 
-fn print_pulse_file(cut: bool, filename: &str, rows: Option<u32>) -> anyhow::Result<()> {
-    let file_path = pulse_files_dir()?.join(filename);
+fn print_file(arg: KonanFile) -> anyhow::Result<()> {
+    let file_path = printer_files_dir_path()?.join(arg.name);
     let content = std::fs::read_to_string(&file_path)
         .with_context(|| format!("Failed to read pulse file '{}'", file_path.display()))?;
-    if filename.ends_with(".md") {
-        print_markdown(cut, &content, rows)
-    } else {
-        print_text(cut, &content, rows)
-    }
-}
+    let file_extension = file_path
+        .extension()
+        .expect("Supported files are markdown and text");
 
-fn print_remote_file(file: RemoteFile, cut: bool, rows: Option<u32>) -> anyhow::Result<()> {
-    let remote_path = application_storage_path()?.join(file.file_name());
-    let file_content = std::fs::read_to_string(remote_path)?;
-    match file {
-        RemoteFile::Markdown => print_markdown(cut, &file_content, rows),
-        RemoteFile::Text => print_text(cut, &file_content, rows),
+    if file_extension == "md" {
+        print_markdown(DirectPrintOut {
+            cut: arg.cut,
+            content,
+            rows: arg.rows,
+        })
+    } else if file_extension == "txt" {
+        print_text(DirectPrintOut {
+            cut: arg.cut,
+            content,
+            rows: arg.rows,
+        })
+    } else {
+        bail!("Supported extensions are markdown and text")
     }
 }

@@ -1,85 +1,51 @@
-mod template;
-use chrono::{DateTime, Utc};
+use anyhow::Context;
 use serde::{Deserialize, Serialize};
-pub use template::{DateBanner, TemplateArgs, TemplateCommand, TimePeriod};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+pub mod clap_enum;
+pub mod tasks;
+pub mod template_command;
+pub use template_command::TemplateArgs;
+
+/// Direct data passed to enqueue print process
 pub enum PrintTask {
-    BoxTemplate {
-        cut: bool,
-        rows: Option<u32>,
-        lined: bool,
-        banner: Option<String>,
-        date: Option<DateTime<Utc>>,
-    },
-    HabitTracker {
-        cut: bool,
-        habit: String,
-        start_date: DateTime<Utc>,
-        end_date: DateTime<Utc>,
-    },
-    Markdown {
-        cut: bool,
-        content: String,
-        rows: Option<u32>,
-    },
-    Text {
-        cut: bool,
-        content: String,
-        rows: Option<u32>,
-    },
-    PulseFile {
-        cut: bool,
-        filename: String,
-        rows: Option<u32>,
-    },
-    File {
-        file: RemoteFile,
-        cut: bool,
-        rows: Option<u32>,
-    },
+    BoxTemplate(tasks::BoxTemplate),
+    HabitTracker(tasks::HabitTrackerTemplate),
+    Markdown(tasks::DirectPrintOut),
+    Text(tasks::DirectPrintOut),
+    File(tasks::KonanFile),
 }
 
-impl From<PrintTask> for String {
-    fn from(job: PrintTask) -> Self {
-        serde_json::to_string(&job).expect("failed to serialize PrintTask")
+/// Tagged enum for pulse recipes that can round-trip through JSON in the database.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type")]
+pub enum PulseRecipe {
+    BoxTemplate(tasks::BoxTemplatePulseRecipe),
+    HabitTracker(tasks::HabitTrackerPulseRecipe),
+    File(tasks::KonanFile),
+}
+
+impl PulseRecipe {
+    pub fn to_json(&self) -> anyhow::Result<String> {
+        serde_json::to_string(self).context("Failed to serialize PulseRecipe")
+    }
+
+    pub fn from_json(s: &str) -> anyhow::Result<Self> {
+        serde_json::from_str(s).context("Failed to deserialize PulseRecipe")
     }
 }
 
-impl TryFrom<String> for PrintTask {
-    type Error = serde_json::Error;
-
-    fn try_from(s: String) -> Result<Self, Self::Error> {
-        serde_json::from_str(&s)
-    }
-}
-
-impl TryFrom<&str> for PrintTask {
-    type Error = serde_json::Error;
-
-    fn try_from(s: &str) -> Result<Self, Self::Error> {
-        serde_json::from_str(s)
-    }
-}
-
-#[derive(clap::ValueEnum, Clone, Copy, Debug, Serialize, Deserialize)]
-pub enum RemoteFile {
-    Markdown,
-    Text,
-}
-impl RemoteFile {
-    pub fn file_name(&self) -> String {
-        match self {
-            RemoteFile::Markdown => "konan_print.md".to_string(),
-            RemoteFile::Text => "konan_print.txt".to_string(),
+impl From<PulseRecipe> for PrintTask {
+    fn from(recipe: PulseRecipe) -> Self {
+        match recipe {
+            PulseRecipe::BoxTemplate(r) => PrintTask::BoxTemplate(r.into()),
+            PulseRecipe::HabitTracker(r) => PrintTask::HabitTracker(r.into()),
+            PulseRecipe::File(r) => PrintTask::File(r),
         }
     }
 }
 
 /// Relative path (from home directory) to the konan app storage directory.
 pub const APPLICATION_STORAGE_DIR: &str = ".local/share/konan";
-/// Relative path (from home directory) to the pulse files directory.
-pub const PI_CLI_PULSE_DIR: &str = "pulse_files";
 
 /// Core crates shared across cli apps
 pub const CORE_MEMBERS: [&str; 3] = ["rongta", "blueprint", "cli_shared"];

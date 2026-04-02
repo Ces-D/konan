@@ -1,10 +1,12 @@
 use crate::{config::KonanIotConfig, print_ops::enqueue_print};
 use anyhow::bail;
-use chrono::{DateTime, Local, NaiveTime, Utc};
-use cli_shared::PrintTask;
+use chrono::{Local, NaiveTime};
+use cli_shared::{
+    PrintTask,
+    tasks::{BoxTemplate, DirectPrintOut, HabitTrackerTemplate},
+};
 use rumqttc::{AsyncClient, ConnectionError, MqttOptions, QoS, TlsConfiguration, Transport};
 use rustls::pki_types::{CertificateDer, PrivateKeyDer, PrivatePkcs1KeyDer, PrivatePkcs8KeyDer};
-use serde::{Deserialize, Serialize};
 use std::{
     fs::File,
     io::BufReader,
@@ -12,25 +14,6 @@ use std::{
     sync::Arc,
 };
 use tokio::time::Duration;
-
-#[derive(Debug, Deserialize, Serialize)]
-struct OutlineTemplate {
-    rows: Option<u32>,
-    date: Option<DateTime<Utc>>,
-    banner: Option<String>,
-    lined: Option<bool>,
-}
-#[derive(Debug, Deserialize, Serialize)]
-struct PrintableMessage {
-    content: String,
-    rows: Option<u32>,
-}
-#[derive(Debug, Deserialize, Serialize)]
-struct HabitTrackerTemplate {
-    habit: String,
-    start_date: DateTime<Utc>,
-    end_date: DateTime<Utc>,
-}
 
 enum MqttTopic {
     Habits,
@@ -140,36 +123,17 @@ pub async fn handle_connect_command(config: KonanIotConfig) -> anyhow::Result<()
                                 MqttTopic::Habits => {
                                     let params: HabitTrackerTemplate =
                                         serde_json::from_slice(&msg.payload).unwrap();
-                                    enqueue_print(PrintTask::HabitTracker {
-                                        cut: true,
-                                        habit: params.habit,
-                                        start_date: params.start_date,
-                                        end_date: params.end_date,
-                                    })
-                                    .await;
+                                    enqueue_print(PrintTask::HabitTracker(params)).await;
                                 }
                                 MqttTopic::Message => {
-                                    let params: PrintableMessage =
+                                    let params: DirectPrintOut =
                                         serde_json::from_slice(&msg.payload).unwrap();
-                                    enqueue_print(PrintTask::Markdown {
-                                        cut: true,
-                                        content: params.content,
-                                        rows: params.rows,
-                                    })
-                                    .await;
+                                    enqueue_print(PrintTask::Markdown(params)).await;
                                 }
                                 MqttTopic::Outline => {
-                                    let params: OutlineTemplate =
+                                    let params: BoxTemplate =
                                         serde_json::from_slice(&msg.payload).unwrap();
-                                    let date = params.date;
-                                    enqueue_print(PrintTask::BoxTemplate {
-                                        cut: true,
-                                        rows: params.rows,
-                                        lined: params.lined.unwrap_or_default(),
-                                        banner: params.banner,
-                                        date,
-                                    })
-                                    .await;
+                                    enqueue_print(PrintTask::BoxTemplate(params)).await;
                                 }
                             }
                         } else {

@@ -1,6 +1,7 @@
-use crate::config::pulse_database_path;
+use crate::config::{printer_files_dir_path, pulse_database_path};
 use anyhow::Result;
 use chrono::Utc;
+use cli_shared::tasks::KonanFile;
 use rusqlite::{Connection, OpenFlags};
 use serde_rusqlite::{columns_from_statement, from_row_with_columns, to_params_named};
 
@@ -62,10 +63,8 @@ pub fn delete_pulse(pulse_id: i64) -> Result<()> {
         )
         .ok();
 
-    if let Some(Ok(cli_shared::PrintTask::PulseFile { filename, .. })) =
-        command.map(cli_shared::PrintTask::try_from)
-    {
-        let path = crate::config::pulse_files_dir()?.join(&filename);
+    if let Some(Ok(KonanFile { name: filename, .. })) = command.map(|c| serde_json::from_str(&c)) {
+        let path = printer_files_dir_path()?.join(&filename);
         let _ = std::fs::remove_file(path);
     }
 
