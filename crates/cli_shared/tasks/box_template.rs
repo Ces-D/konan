@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BoxTemplate {
+    #[serde(default = "super::default_true")]
     pub cut: bool,
     pub rows: Option<u32>,
     pub lined: bool,

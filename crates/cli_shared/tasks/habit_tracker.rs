@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HabitTrackerTemplate {
+    #[serde(default = "super::default_true")]
     pub cut: bool,
     pub habit: String,
     pub start_date: DateTime<Utc>,
