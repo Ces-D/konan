@@ -1,5 +1,5 @@
 use crate::{command_builder::PiCommandBuilder, network::Network};
-use cli_shared::{TemplateArgs, template_command::TemplateCommand};
+use cli_shared::template_command::{TemplateArgs, TemplateCommand};
 
 pub async fn handle_template_command(args: TemplateArgs, cut: bool) -> anyhow::Result<()> {
     let mut conn = Network::new()?;

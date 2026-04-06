@@ -1,20 +1,18 @@
 use crate::print_ops::enqueue_print;
-use clap::Parser;
-use cli_shared::{PrintTask, clap_enum::RemoteFile, tasks::KonanFile};
-
-#[derive(Debug, Parser)]
-pub struct FileArgs {
-    #[clap(short, long, help = "Remote file to print")]
-    file: RemoteFile,
-    #[clap(short, long, help = "Number of rows per page (cuts after each page)")]
-    rows: Option<u32>,
-}
+use cli_shared::{PrintTask, file_command::FileArgs, tasks::KonanFile};
 
 pub async fn handle_file_command(args: FileArgs, cut: bool) -> anyhow::Result<String> {
+    let name = args
+        .path
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_else(|| args.path.to_string_lossy().into_owned());
     enqueue_print(PrintTask::File(KonanFile {
-        name: args.file.file_name(),
+        name,
         cut,
         rows: args.rows,
+        prehook_command: args.prehook_command,
+        prehook_command_arg: args.prehook_command_args,
     }))
     .await;
     Ok("File printed successfully.".to_string())

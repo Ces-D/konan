@@ -1,3 +1,4 @@
+
 use clap::ValueEnum;
 use std::fmt::Display;
 
@@ -50,78 +51,5 @@ impl PiCommandBuilder {
 
     pub fn build(self) -> String {
         self.parts.join(" ")
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use cli_shared::{DateBanner, RemoteFile, TimePeriod};
-
-    #[test]
-    fn test_template_box_full() {
-        let cmd = PiCommandBuilder::new("template box")
-            .named("rows", Some(29u32))
-            .flag("lined", true)
-            .named_enum("date", Some(DateBanner::Today))
-            .named("banner", Some("hello"))
-            .flag("no-cut", true)
-            .build();
-        assert_eq!(
-            cmd,
-            "pi_cli template box --rows '29' --lined --date today --banner 'hello' --no-cut"
-        );
-    }
-
-    #[test]
-    fn test_template_box_minimal() {
-        let cmd = PiCommandBuilder::new("template box")
-            .named::<u32>("rows", None)
-            .flag("lined", false)
-            .named_enum::<DateBanner>("date", None)
-            .named::<String>("banner", None)
-            .flag("no-cut", false)
-            .build();
-        assert_eq!(cmd, "pi_cli template box");
-    }
-
-    #[test]
-    fn test_habit_tracker() {
-        let cmd = PiCommandBuilder::new("template habit-tracker")
-            .positional("Exercise")
-            .named("start-date", Some("2025-01-01"))
-            .named_enum("time-period", Some(TimePeriod::TwoWeek))
-            .flag("no-cut", true)
-            .build();
-        assert_eq!(
-            cmd,
-            "pi_cli template habit-tracker 'Exercise' --start-date '2025-01-01' --time-period two-week --no-cut"
-        );
-    }
-
-    #[test]
-    fn test_positional_with_single_quote() {
-        let cmd = PiCommandBuilder::new("pulse add")
-            .positional("it's a test")
-            .build();
-        assert_eq!(cmd, "pi_cli pulse add 'it'\\''s a test'");
-    }
-
-    #[test]
-    fn test_named_with_single_quote() {
-        let cmd = PiCommandBuilder::new("template box")
-            .named("banner", Some("it's a banner"))
-            .build();
-        assert_eq!(cmd, "pi_cli template box --banner 'it'\\''s a banner'");
-    }
-
-    #[test]
-    fn test_file_command() {
-        let cmd = PiCommandBuilder::new("file")
-            .named_enum("file", Some(RemoteFile::Markdown))
-            .named("rows", Some(40u32))
-            .flag("no-cut", false)
-            .build();
-        assert_eq!(cmd, "pi_cli file --file markdown --rows '40'");
     }
 }

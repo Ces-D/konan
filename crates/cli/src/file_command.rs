@@ -1,22 +1,13 @@
 use crate::{command_builder::PiCommandBuilder, network::Network};
 use anyhow::bail;
-use clap::Parser;
-use std::path::PathBuf;
-
-#[derive(Debug, Parser)]
-pub struct FileArgs {
-    #[clap(help = "The file path")]
-    pub path: PathBuf,
-    #[clap(long, help = "Number of rows per page (cuts after each page)")]
-    pub rows: Option<u32>,
-}
+pub use cli_shared::file_command::FileArgs;
 
 pub async fn handle_file_command(args: FileArgs, cut: bool) -> anyhow::Result<()> {
     let mut conn = Network::new()?;
-    match conn.upload_file(&args.path) {
+    match conn.upload_file(&args.path, true) {
         Ok(remote_file) => {
             let cmd = PiCommandBuilder::new("file")
-                .named_enum("file", Some(remote_file))
+                .named("file", Some(remote_file))
                 .named("rows", args.rows)
                 .flag("no-cut", !cut);
             conn.execute_command(cmd)

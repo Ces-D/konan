@@ -1,3 +1,6 @@
+use std::path::PathBuf;
+
+use anyhow::{Context, bail};
 use chrono::{DateTime, Datelike, Duration, Months, Utc, Weekday};
 use serde::{Deserialize, Serialize};
 
@@ -76,16 +79,31 @@ impl From<TimePeriod> for chrono::DateTime<Utc> {
     }
 }
 
-#[derive(clap::ValueEnum, Clone, Copy, Debug, Serialize, Deserialize)]
-pub enum RemoteFile {
-    Markdown,
-    Text,
+#[derive(clap::ValueEnum, Clone, Debug, Serialize, Deserialize)]
+pub enum AllowedCommand {
+    DailyBugleNow,
+    DailyBugleToday,
+    DailyBugleThisWeek,
 }
-impl RemoteFile {
-    pub fn file_name(&self) -> String {
-        match self {
-            RemoteFile::Markdown => "konan_print.md".to_string(),
-            RemoteFile::Text => "konan_print.txt".to_string(),
+impl AllowedCommand {
+    pub fn run_command(&self, store_loc: PathBuf, profile: &str) -> anyhow::Result<()> {
+        let command = match self {
+            AllowedCommand::DailyBugleNow => std::process::Command::new("daily-bugle")
+                .args(["almanac", "now", "--profile", profile])
+                .output(),
+            AllowedCommand::DailyBugleToday => std::process::Command::new("daily-bugle")
+                .args(["almanac", "today", "--profile", profile])
+                .output(),
+            AllowedCommand::DailyBugleThisWeek => std::process::Command::new("daily-bugle")
+                .args(["almanac", "this-week", "--profile", profile])
+                .output(),
+        };
+        let command = command?;
+        if command.status.success() {
+            std::fs::write(store_loc, command.stdout)
+                .with_context(|| "Failed to write allowed command to file")
+        } else {
+            bail!("DailyBugleNow command failed");
         }
     }
 }

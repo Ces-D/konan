@@ -2,9 +2,9 @@ use anyhow::Context;
 use serde::{Deserialize, Serialize};
 
 pub mod clap_enum;
+pub mod file_command;
 pub mod tasks;
 pub mod template_command;
-pub use template_command::TemplateArgs;
 
 /// Direct data passed to enqueue print process
 pub enum PrintTask {

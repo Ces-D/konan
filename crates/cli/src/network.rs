@@ -1,6 +1,5 @@
 use crate::command_builder::PiCommandBuilder;
 use anyhow::{Context, Result};
-use cli_shared::clap_enum::RemoteFile;
 use ssh2::Session;
 use std::{
     io::prelude::*,
@@ -64,7 +63,7 @@ impl Network {
         Ok(())
     }
 
-    fn prepare_file(p: &Path) -> Result<(RemoteFile, i32, u64)> {
+    fn prepare_file(p: &Path, replace_file_name: bool) -> Result<(String, i32, u64)> {
         // Check the path exists and is a file
         if !p.exists() {
             anyhow::bail!("File does not exist: {}", p.display());
@@ -73,17 +72,30 @@ impl Network {
             anyhow::bail!("Path is not a file: {}", p.display());
         }
 
-        let remote_file = match p.extension() {
+        let extension: SupportedExtension = match p.extension() {
             Some(extension) => match extension.to_str() {
-                Some("md") => RemoteFile::Markdown,
-                // Validate extension is .md or .txt
-                Some("txt") => RemoteFile::Text,
+                Some("md") => SupportedExtension::Md,
+                Some("txt") => SupportedExtension::Txt,
                 _ => anyhow::bail!(
                     "File must be a markdown (.md) or text (.txt) file, got: {:?}",
                     extension
                 ),
             },
-            None => RemoteFile::Text,
+            None => {
+                anyhow::bail!("File must be a markdown (.md) or text (.txt) file")
+            }
+        };
+
+        let file_name = match replace_file_name {
+            true => match extension {
+                SupportedExtension::Txt => "konan_print.txt".to_string(),
+                SupportedExtension::Md => "konan_print.md".to_string(),
+            },
+            false => p
+                .file_name()
+                .context("Path has no file name")?
+                .to_string_lossy()
+                .into_owned(),
         };
 
         // Unix file mode: 0o644 = owner read/write, group/others read-only
@@ -95,7 +107,7 @@ impl Network {
             .with_context(|| format!("Failed to read metadata for: {}", p.display()))?
             .len();
 
-        Ok((remote_file, mode, size))
+        Ok((file_name, mode, size))
     }
 
     /// Build the remote path for a file in the printer files directory.
@@ -109,22 +121,11 @@ impl Network {
         )
     }
 
-    pub fn upload_file(&mut self, path: &PathBuf) -> Result<RemoteFile> {
-        let (rf, mode, size) = Self::prepare_file(path)?;
-        let remote_path = Self::remote_files_path(&rf.file_name());
-        self.scp_upload(path, &remote_path, mode, size)?;
-        Ok(rf)
-    }
-
-    pub fn upload_pulse_file(&mut self, path: &PathBuf) -> Result<String> {
-        let (_, mode, size) = Self::prepare_file(path)?;
-        let file_name = path
-            .file_name()
-            .context("Path has no file name")?
-            .to_string_lossy();
+    pub fn upload_file(&mut self, path: &PathBuf, replace_file_name: bool) -> Result<String> {
+        let (file_name, mode, size) = Self::prepare_file(path, replace_file_name)?;
         let remote_path = Self::remote_files_path(&file_name);
         self.scp_upload(path, &remote_path, mode, size)?;
-        Ok(file_name.into_owned())
+        Ok(file_name)
     }
 
     fn scp_upload(&mut self, local: &Path, remote: &str, mode: i32, size: u64) -> Result<()> {
@@ -140,4 +141,9 @@ impl Network {
         remote_file.wait_close()?;
         Ok(())
     }
+}
+
+enum SupportedExtension {
+    Txt,
+    Md,
 }

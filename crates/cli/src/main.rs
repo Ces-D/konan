@@ -11,7 +11,7 @@ pub enum Commands {
     #[clap(about = "Print a file")]
     File(file_command::FileArgs),
     #[clap(about = "Print a predefined template")]
-    Template(cli_shared::TemplateArgs),
+    Template(cli_shared::template_command::TemplateArgs),
     #[clap(about = "Schedule a recurring print job")]
     Pulse(pulse_command::PulseArgs),
 }

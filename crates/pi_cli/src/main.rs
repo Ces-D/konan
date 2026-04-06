@@ -1,18 +1,19 @@
-use clap::{Parser, Subcommand};
-
-mod database;
 use crate::config::Config;
+use clap::{Parser, Subcommand};
+use cli_shared::{file_command, template_command};
+
 mod commands;
 mod config;
-pub(crate) mod print_ops;
+mod database;
+mod print_ops;
 
 #[derive(Debug, Subcommand)]
 pub enum Commands {
     Connect,
     #[clap(about = "Print a file")]
-    File(commands::FileArgs),
+    File(file_command::FileArgs),
     #[clap(about = "Print a predefined template")]
-    Template(cli_shared::TemplateArgs),
+    Template(template_command::TemplateArgs),
     #[clap(about = "Print scheduled jobs")]
     Pulse(commands::PulseArgs),
 }

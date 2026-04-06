@@ -117,6 +117,9 @@ fn print_habit_tracker(arg: HabitTrackerTemplate) -> anyhow::Result<()> {
 
 fn print_file(arg: KonanFile) -> anyhow::Result<()> {
     let file_path = printer_files_dir_path()?.join(arg.name);
+    if let Some((prehook_command, profile)) = arg.prehook_command.zip(arg.prehook_command_arg) {
+        prehook_command.run_command(file_path.clone(), &profile)?;
+    }
     let content = std::fs::read_to_string(&file_path)
         .with_context(|| format!("Failed to read pulse file '{}'", file_path.display()))?;
     let file_extension = file_path
