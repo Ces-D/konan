@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{fmt::Display, path::PathBuf};
 
 use anyhow::{Context, bail};
 use chrono::{DateTime, Datelike, Duration, Months, Utc, Weekday};
@@ -85,6 +85,16 @@ pub enum AllowedCommand {
     DailyBugleToday,
     DailyBugleThisWeek,
 }
+impl Display for AllowedCommand {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let name = match self {
+            AllowedCommand::DailyBugleNow => "daily-bugle-now",
+            AllowedCommand::DailyBugleToday => "daily-bugle-today",
+            AllowedCommand::DailyBugleThisWeek => "daily-bugle-this-week",
+        };
+        write!(f, "{}", name)
+    }
+}
 impl AllowedCommand {
     pub fn run_command(&self, store_loc: PathBuf, profile: &str) -> anyhow::Result<()> {
         let command = match self {
@@ -98,12 +108,15 @@ impl AllowedCommand {
                 .args(["almanac", "this-week", "--profile", profile])
                 .output(),
         };
-        let command = command?;
+        let command = command
+            .with_context(|| format!("Failed to execute '{self}' with profile '{profile}'"))?;
         if command.status.success() {
-            std::fs::write(store_loc, command.stdout)
-                .with_context(|| "Failed to write allowed command to file")
+            std::fs::write(&store_loc, &command.stdout).with_context(|| {
+                format!("Failed to write '{self}' output to {}", store_loc.display())
+            })
         } else {
-            bail!("DailyBugleNow command failed");
+            let stderr = String::from_utf8_lossy(&command.stderr);
+            bail!("'{self}' exited with {}\nstderr: {stderr}", command.status);
         }
     }
 }

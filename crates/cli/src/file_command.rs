@@ -7,9 +7,11 @@ pub async fn handle_file_command(args: FileArgs, cut: bool) -> anyhow::Result<()
     match conn.upload_file(&args.path, true) {
         Ok(remote_file) => {
             let cmd = PiCommandBuilder::new("file")
-                .named("file", Some(remote_file))
+                .positional(&remote_file)
                 .named("rows", args.rows)
-                .flag("no-cut", !cut);
+                .flag("no-cut", !cut)
+                .named("prehook-command", args.prehook_command)
+                .named("prehook-command-args", args.prehook_command_args);
             conn.execute_command(cmd)
         }
         Err(e) => {
