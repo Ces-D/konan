@@ -9,9 +9,9 @@ use escpos::{
     utils::Protocol,
 };
 
-mod cp437;
 pub mod elements;
 mod line;
+mod page_code;
 pub mod printer;
 
 pub const CPL: u8 = 48; // characters per line
@@ -94,7 +94,7 @@ impl RongtaPrinter {
     ) -> anyhow::Result<()> {
         let mut last_justify_content = Justify::default();
         let mut last_format_state = FormatState::default();
-        let mut last_page_code = cp437::CharPageCode::default();
+        let mut last_page_code = page_code::CharPageCode::default();
         if let Some(rows_per_page) = rows {
             let mut line_count = 0;
             for line in &self.lines {
@@ -149,11 +149,11 @@ pub enum SupportedDriver {
     Network(String, u16),
 }
 
-impl From<cp437::CharPageCode> for PageCode {
-    fn from(code: cp437::CharPageCode) -> Self {
+impl From<page_code::CharPageCode> for PageCode {
+    fn from(code: page_code::CharPageCode) -> Self {
         match code {
-            cp437::CharPageCode::Pc437 => PageCode::PC437,
-            cp437::CharPageCode::Pc850 => PageCode::PC850,
+            page_code::CharPageCode::Pc437 => PageCode::PC437,
+            page_code::CharPageCode::Pc850 => PageCode::PC850,
         }
     }
 }
@@ -206,7 +206,7 @@ fn print_line(
     printer: &mut printer::AnyPrinter,
     last_justify_content: &mut Justify,
     last_format_state: &mut FormatState,
-    last_page_code: &mut cp437::CharPageCode,
+    last_page_code: &mut page_code::CharPageCode,
 ) -> anyhow::Result<()> {
     if *last_justify_content != line.justify_content {
         line.justify_content.to_print_command(printer)?;
@@ -226,8 +226,8 @@ fn print_line(
             styled_char.state.to_print_command(printer)?;
             *last_format_state = styled_char.state;
         }
-        let normalized = cp437::normalize_char(styled_char.ch).unwrap_or(styled_char.ch);
-        let required = cp437::char_page_code(normalized)
+        let normalized = page_code::normalize_char(styled_char.ch).unwrap_or(styled_char.ch);
+        let required = page_code::char_page_code(normalized)
             .ok_or_else(|| anyhow::anyhow!("Unsupported character: '{}'", normalized))?;
         if *last_page_code != required {
             printer.page_code(required.into())?;

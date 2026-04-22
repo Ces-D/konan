@@ -73,6 +73,10 @@ pub fn normalize_char(ch: char) -> Option<char> {
         '\u{201C}' | '\u{201D}' => Some('"'),
         // En-dash, em-dash → hyphen-minus
         '\u{2013}' | '\u{2014}' => Some('-'),
+        // Left arrow → less-than
+        '\u{2190}' => Some('<'),
+        // Right arrow → greater-than
+        '\u{2192}' => Some('>'),
         _ => None,
     }
 }
