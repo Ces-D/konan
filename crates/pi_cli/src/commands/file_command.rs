@@ -11,8 +11,6 @@ pub async fn handle_file_command(args: FileArgs, cut: bool) -> anyhow::Result<St
         name,
         cut,
         rows: args.rows,
-        prehook_command: args.prehook_command,
-        prehook_command_arg: args.prehook_command_args,
     }))
     .await;
     Ok("File printed successfully.".to_string())

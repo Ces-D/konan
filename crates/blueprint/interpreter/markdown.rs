@@ -33,6 +33,7 @@ impl MarkdownInterpreter {
         match tag {
             Tag::Paragraph => {
                 log::debug!("Tag start: Paragraph");
+                self.builder.new_line();
                 self.builder.reset_styles();
                 Ok(())
             }
@@ -51,6 +52,7 @@ impl MarkdownInterpreter {
                     pulldown_cmark::HeadingLevel::H5 => 5,
                     pulldown_cmark::HeadingLevel::H6 => 6,
                 };
+                self.builder.new_line();
                 super::block_adornment::set_heading_style(level, &mut self.builder)
             }
             Tag::BlockQuote(_) | Tag::CodeBlock(_) => {
@@ -63,6 +65,7 @@ impl MarkdownInterpreter {
             Tag::List(ordered_start) => {
                 log::debug!("Tag start: List (ordered_start={:?})", ordered_start);
                 self.list_index = *ordered_start;
+                self.builder.new_line();
                 Ok(())
             }
             Tag::Item => {

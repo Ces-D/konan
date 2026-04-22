@@ -87,8 +87,6 @@ pub async fn handle_pulse_command(args: PulseArgs, cut: bool) -> Result<()> {
                 cut,
                 name: filename,
                 rows: file_args.rows,
-                prehook_command: file_args.prehook_command,
-                prehook_command_arg: file_args.prehook_command_args,
             });
 
             let command_json = recipe.to_json()?;

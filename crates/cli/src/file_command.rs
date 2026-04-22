@@ -9,9 +9,7 @@ pub async fn handle_file_command(args: FileArgs, cut: bool) -> anyhow::Result<()
             let cmd = PiCommandBuilder::new("file")
                 .positional(&remote_file)
                 .named("rows", args.rows)
-                .flag("no-cut", !cut)
-                .named("prehook-command", args.prehook_command)
-                .named("prehook-command-args", args.prehook_command_args);
+                .flag("no-cut", !cut);
             conn.execute_command(cmd)
         }
         Err(e) => {

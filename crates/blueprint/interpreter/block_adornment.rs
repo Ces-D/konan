@@ -111,7 +111,6 @@ impl ListItemBefore {
 impl ToBuilderCommand for ListItemBefore {
     fn to_builder_command(&self, builder: &mut RongtaPrinter) -> Result<()> {
         log::trace!("Justification ignored for list items");
-        builder.new_line();
         builder.reset_styles();
         builder.set_justify_content(Justify::Left);
         builder.set_text_size(self.format.text_size);
@@ -142,7 +141,6 @@ impl TaskListBefore {
 }
 impl ToBuilderCommand for TaskListBefore {
     fn to_builder_command(&self, builder: &mut RongtaPrinter) -> Result<()> {
-        builder.new_line();
         builder.reset_styles();
         builder.set_text_size(self.format.text_size);
         builder.set_is_bold(self.format.is_bold);

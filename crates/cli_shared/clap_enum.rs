@@ -1,7 +1,5 @@
-use anyhow::{Context, bail};
 use chrono::{DateTime, Datelike, Duration, Months, Utc, Weekday};
 use serde::{Deserialize, Serialize};
-use std::{fmt::Display, path::PathBuf};
 
 #[derive(clap::ValueEnum, Clone, Copy, Debug, Default, Serialize, Deserialize)]
 pub enum DateBanner {
@@ -75,47 +73,5 @@ impl TimePeriod {
 impl From<TimePeriod> for chrono::DateTime<Utc> {
     fn from(value: TimePeriod) -> Self {
         TimePeriod::into_datetime(value, Utc::now())
-    }
-}
-
-#[derive(clap::ValueEnum, Clone, Debug, Serialize, Deserialize)]
-pub enum AllowedCommand {
-    DailyBugleNow,
-    DailyBugleToday,
-    DailyBugleThisWeek,
-}
-impl Display for AllowedCommand {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let name = match self {
-            AllowedCommand::DailyBugleNow => "daily-bugle-now",
-            AllowedCommand::DailyBugleToday => "daily-bugle-today",
-            AllowedCommand::DailyBugleThisWeek => "daily-bugle-this-week",
-        };
-        write!(f, "{}", name)
-    }
-}
-impl AllowedCommand {
-    pub fn run_command(&self, store_loc: PathBuf, profile: &str) -> anyhow::Result<()> {
-        let command = match self {
-            AllowedCommand::DailyBugleNow => std::process::Command::new("daily-bugle")
-                .args(["almanac", "now", "--profile", profile])
-                .output(),
-            AllowedCommand::DailyBugleToday => std::process::Command::new("daily-bugle")
-                .args(["almanac", "today", "--profile", profile])
-                .output(),
-            AllowedCommand::DailyBugleThisWeek => std::process::Command::new("daily-bugle")
-                .args(["almanac", "this-week", "--profile", profile])
-                .output(),
-        };
-        let command = command
-            .with_context(|| format!("Failed to execute '{self}' with profile '{profile}'"))?;
-        if command.status.success() {
-            std::fs::write(&store_loc, &command.stdout).with_context(|| {
-                format!("Failed to write '{self}' output to {}", store_loc.display())
-            })
-        } else {
-            let stderr = String::from_utf8_lossy(&command.stderr);
-            bail!("'{self}' exited with {}\nstderr: {stderr}", command.status);
-        }
     }
 }
