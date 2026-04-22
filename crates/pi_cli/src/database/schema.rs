@@ -34,6 +34,22 @@ impl NewPulse {
     }
 }
 
+mod ser {
+    use super::*;
+    use serde::Serializer;
+
+    pub fn ny_human<S: Serializer>(
+        dt: &chrono::DateTime<Utc>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
+        let formatted = dt
+            .with_timezone(&nyc_tz())
+            .format("%a %b %-d %-I:%M%p")
+            .to_string();
+        serializer.serialize_str(&formatted)
+    }
+}
+
 mod de {
     use super::*;
     use serde::Deserializer;
@@ -86,6 +102,7 @@ pub struct CompactPulse {
     id: i64,
     pub name: String,
     pub command: String,
+    #[serde(serialize_with = "ser::ny_human")]
     pub next_run: chrono::DateTime<Utc>,
 }
 impl TryFrom<Pulse> for CompactPulse {

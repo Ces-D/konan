@@ -1,6 +1,7 @@
 use crate::elements::{FormatState, Justify, TextSize};
 use anyhow::{Context, Result};
 use elements::ToPrintCommand;
+use escpos::utils::PageCode;
 use escpos::{
     driver::{ConsoleDriver, Driver, NetworkDriver, UsbDriver},
     printer::Printer,
@@ -93,6 +94,7 @@ impl RongtaPrinter {
     ) -> anyhow::Result<()> {
         let mut last_justify_content = Justify::default();
         let mut last_format_state = FormatState::default();
+        let mut last_page_code = cp437::CharPageCode::default();
         if let Some(rows_per_page) = rows {
             let mut line_count = 0;
             for line in &self.lines {
@@ -101,6 +103,7 @@ impl RongtaPrinter {
                     printer,
                     &mut last_justify_content,
                     &mut last_format_state,
+                    &mut last_page_code,
                 )?;
                 line_count += 1;
                 if line_count >= rows_per_page {
@@ -122,6 +125,7 @@ impl RongtaPrinter {
                     printer,
                     &mut last_justify_content,
                     &mut last_format_state,
+                    &mut last_page_code,
                 )?;
             }
             match self.cut {
@@ -143,6 +147,15 @@ pub enum SupportedDriver {
     Console,
     Usb(u16, u16),
     Network(String, u16),
+}
+
+impl From<cp437::CharPageCode> for PageCode {
+    fn from(code: cp437::CharPageCode) -> Self {
+        match code {
+            cp437::CharPageCode::Pc437 => PageCode::PC437,
+            cp437::CharPageCode::Pc850 => PageCode::PC850,
+        }
+    }
 }
 
 pub fn build_any_printer(driver: SupportedDriver) -> Result<printer::AnyPrinter> {
@@ -193,6 +206,7 @@ fn print_line(
     printer: &mut printer::AnyPrinter,
     last_justify_content: &mut Justify,
     last_format_state: &mut FormatState,
+    last_page_code: &mut cp437::CharPageCode,
 ) -> anyhow::Result<()> {
     if *last_justify_content != line.justify_content {
         line.justify_content.to_print_command(printer)?;
@@ -212,7 +226,14 @@ fn print_line(
             styled_char.state.to_print_command(printer)?;
             *last_format_state = styled_char.state;
         }
-        styled_char.to_print_command(printer)?;
+        let normalized = cp437::normalize_char(styled_char.ch).unwrap_or(styled_char.ch);
+        let required = cp437::char_page_code(normalized)
+            .ok_or_else(|| anyhow::anyhow!("Unsupported character: '{}'", normalized))?;
+        if *last_page_code != required {
+            printer.page_code(required.into())?;
+            *last_page_code = required;
+        }
+        printer.write(&normalized.to_string())?;
     }
     printer.feed()
 }

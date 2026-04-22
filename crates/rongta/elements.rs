@@ -1,4 +1,4 @@
-use crate::{cp437, printer::AnyPrinter};
+use crate::printer::AnyPrinter;
 use anyhow::Result;
 use escpos::utils::JustifyMode;
 
@@ -69,12 +69,4 @@ impl ToPrintCommand for FormatState {
 pub struct StyledChar {
     pub ch: char,
     pub state: FormatState,
-}
-impl ToPrintCommand for StyledChar {
-    fn to_print_command(&self, printer: &mut AnyPrinter) -> Result<()> {
-        // Normalize typographic characters to ASCII equivalents before CP437 validation
-        let normalized_ch = cp437::normalize_char(self.ch).unwrap_or(self.ch);
-        let ascii_content = cp437::cp437_char_only(normalized_ch)?;
-        printer.write(&ascii_content.to_string())
-    }
 }

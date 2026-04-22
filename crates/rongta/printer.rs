@@ -2,7 +2,7 @@ use anyhow::Result;
 use escpos::{
     driver::{ConsoleDriver, NetworkDriver, UsbDriver},
     printer::Printer,
-    utils::{JustifyMode, UnderlineMode},
+    utils::{JustifyMode, PageCode, UnderlineMode},
 };
 
 pub enum AnyPrinter {
@@ -34,4 +34,5 @@ impl AnyPrinter {
     delegate_printer_method!(underline, mode:UnderlineMode);
     delegate_printer_method!(size, width:u8, height:u8);
     delegate_printer_method!(reset_size);
+    delegate_printer_method!(page_code, code: PageCode);
 }

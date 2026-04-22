@@ -1,8 +1,7 @@
-use std::{fmt::Display, path::PathBuf};
-
 use anyhow::{Context, bail};
 use chrono::{DateTime, Datelike, Duration, Months, Utc, Weekday};
 use serde::{Deserialize, Serialize};
+use std::{fmt::Display, path::PathBuf};
 
 #[derive(clap::ValueEnum, Clone, Copy, Debug, Default, Serialize, Deserialize)]
 pub enum DateBanner {
